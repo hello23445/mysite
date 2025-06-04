@@ -5,125 +5,23 @@
   <title>Ежедневная ставка</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #4facfe, #00f2fe);
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .container {
-      background: rgba(0,0,0,0.3);
-      padding: 20px;
-      border-radius: 15px;
-      text-align: center;
-      box-shadow: 0 0 15px rgba(0,0,0,0.3);
-      width: 80%;
-      max-width: 600px;
-    }
-    input[type=range], input[type=text] {
-      width: 100%;
-      padding: 8px;
-      margin: 10px 0;
-      border-radius: 5px;
-      border: none;
-    }
+    body { font-family: Arial, sans-serif; background: #f0f0f0; margin: 0; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .leaderboard { display: flex; justify-content: space-between; }
+    .left-column { flex: 1; margin-right: 20px; }
+    .right-column { flex: 2; }
+    .timer { font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+    .loader { border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     .hidden { display: none; }
-    .loader {
-      border: 5px solid #f3f3f3;
-      border-top: 5px solid #3498db;
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      animation: spin 2s linear infinite;
-      margin: 20px auto;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    .leaderboard {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-top: 20px;
-    }
-    .left-column, .right-column {
-      width: 48%;
-    }
-    .timer {
-      font-size: 2em;
-      margin-bottom: 20px;
-    }
-    .leaderboard-list {
-      list-style: none;
-      padding: 0;
-      text-align: left;
-    }
-    .leaderboard-list li {
-      margin: 5px 0;
-    }
-    .error {
-      color: #ff0000;
-      font-weight: bold;
-      font-size: 1.5em;
-      background: rgba(0, 0, 0, 0.9);
-      padding: 15px;
-      border-radius: 8px;
-      margin: 10px 0;
-      position: relative;
-      text-shadow: 1px 1px 2px white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .message {
-      color: #ffffff;
-      font-weight: bold;
-      font-size: 1.5em;
-      background: rgba(0, 0, 0, 0.9);
-      padding: 15px;
-      border-radius: 8px;
-      margin: 10px 0;
-      text-shadow: 1px 1px 2px white;
-    }
-    .copy-btn {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: none;
-      border: none;
-      color: #fff;
-      font-size: 1em;
-      cursor: pointer;
-      padding: 5px;
-    }
-    .copy-btn:hover {
-      color: #ddd;
-    }
-    .nickname-error {
-      color: #ff0000;
-      font-size: 1.2em;
-      margin-top: 5px;
-    }
-    button {
-      background-color: #4CAF50;
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      margin-top: 10px;
-      transition: background-color 0.3s;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
+    .error { color: red; }
+    .message { color: green; }
+    .copy-btn { margin-left: 10px; background: none; border: none; cursor: pointer; font-size: 16px; }
+    .leaderboard-list { padding-left: 20px; }
+    input[type="range"] { width: 100%; }
+    button { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #2980b9; }
+    .nickname-error { color: red; margin-top: 5px; }
   </style>
 </head>
 <body>
@@ -138,9 +36,9 @@ console.error = function (...args) {
   originalConsoleError.apply(console, args);
 };
 
-const SHEET_ID = "1DT1Cj5KvJ3ECL2tb7IF-tGcvPxUA4y_69y9TJ8GwRBI"; // Для Google Apps Script
-const todayKey = 'dailyBet_' + new Date().toISOString().slice(0, 10); // "dailyBet_2025-06-04"
-const scriptURL = 'https://script.google.com/macros/s/AKfycbyRY2Ak-BHZJJZEb4k4CHI5NR-vTpP-cukZsp4i02bqPhJkJj6ArWddtne2qtZDdFEb/exec';
+const SHEET_ID = "1DT1Cj5KvJ3ECL2tb7IF-tGcvPxUA4y_69y9TJ8GwRBI";
+const todayKey = 'dailyBet_' + new Date().toISOString().slice(0, 10);
+const scriptURL = 'https://script.google.com/macros/s/AKfycbyO9EMAGmguN-XgolyuVENUA0pS7eiFBtVgHwt2GXcptQIi_dzqiMK91oMitqXRfBCk/exec';
 
 function showMessage(msg, isError = false, errorObj = null, showCopy = true) {
   const className = isError ? 'error' : 'message';
@@ -238,7 +136,6 @@ async function submitBet(name, bet) {
     showLoader();
     await sendToSheet(name, bet);
     await showLeaderboard();
-    initTimer();
     if (!unlimitedAttempts) {
       localStorage.setItem(todayKey, attempts + 1);
     }
@@ -258,31 +155,25 @@ async function sendToSheet(name, bet) {
 
 async function loadLeaderboardDataViaScript() {
   const url = `${scriptURL}?action=getLeaderboard`;
-  console.log('Fetching leaderboard data via script from:', url);
   try {
     const response = await fetch(url, { method: 'GET', mode: 'cors' });
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('LoadLeaderboardDataViaScript failed:', response.status, response.statusText, 'Details:', errorText);
-      throw new Error(
-        `Не удалось загрузить данные через Google Apps Script: ${response.status} ${response.statusText}. ` +
-        'Убедитесь, что обработчик "getLeaderboard" добавлен в ваш Google Apps Script.'
-      );
-    }
+    if (!response.ok) throw new Error(`Не удалось загрузить данные: ${response.status} ${response.statusText}`);
     const data = await response.json();
-    console.log('Raw data from script:', data);
-    const rows = data.values || [];
-    // Фильтрация уникальных записей по никнейму, сохраняя последнюю ставку
+    const values = data.values || [];
+    const startTime = data.startTime ? new Date(data.startTime) : null;
+    const serverTimeMs = data.currentTime;
+    const clientTimeMs = Date.now();
+    const offset = serverTimeMs - clientTimeMs;
     const uniqueData = [];
     const seenNames = new Set();
-    for (let i = rows.length - 1; i >= 0; i--) {
-      const [name, bet] = rows[i];
+    for (let i = values.length - 1; i >= 0; i--) {
+      const [name, bet] = values[i];
       if (name && !seenNames.has(name)) {
         seenNames.add(name);
         uniqueData.unshift({ name, bet: parseInt(bet) });
       }
     }
-    return uniqueData;
+    return { values: uniqueData, startTime, offset };
   } catch (error) {
     throw error;
   }
@@ -290,26 +181,23 @@ async function loadLeaderboardDataViaScript() {
 
 async function showLeaderboard() {
   showLoader();
-  let data;
+  let leaderboardData;
   try {
-    data = await loadLeaderboardDataViaScript();
+    leaderboardData = await loadLeaderboardDataViaScript();
   } catch (error) {
-    showMessage(
-      `Ошибка при загрузке таблицы лидеров: ${error.message}. Проверьте настройки Google Apps Script.`,
-      true,
-      error
-    );
+    showMessage(`Ошибка при загрузке таблицы лидеров: ${error.message}`, true, error);
     return;
   }
 
-  data.sort((a, b) => b.bet - a.bet);
-  const html = data.length > 0 
-    ? data.map((d, index) => `<li><strong>${index + 1}. ${d.name}</strong> — ${d.bet}</li>`).join('')
+  let { values, startTime, offset } = leaderboardData;
+  values.sort((a, b) => b.bet - a.bet);
+  const html = values.length > 0 
+    ? values.map((d, index) => `<li><strong>${index + 1}. ${d.name}</strong> — ${d.bet}</li>`).join('')
     : '<li>Нет участников</li>';
   document.getElementById('main').innerHTML = `
     <div class="leaderboard">
       <div class="left-column">
-        <div class="timer" id="timer"></div>
+        <div class="timer" id="timer">Ожидание...</div>
         <div id="loading" class="hidden">
           <div class="loader"></div>
           <p>Определяем победителя...</p>
@@ -326,47 +214,39 @@ async function showLeaderboard() {
       </div>
     </div>
   `;
-}
 
-async function getStartTime() {
-  const url = `${scriptURL}?action=getStartTime`;
-  const response = await fetch(url, { method: 'GET', mode: 'cors' });
-  if (!response.ok) throw new Error('Failed to fetch');
-  const data = await response.json();
-  if (data.error) throw new Error(data.error);
-  return new Date(data.startTime);
-}
-
-async function initTimer() {
-  try {
-    const startTime = await getStartTime();
-    const now = new Date();
-    const elapsed = Math.floor((now - startTime) / 1000);
-    const totalTime = 60;
-    const remaining = totalTime - elapsed;
-    if (remaining > 0) {
-      startCountdown(remaining);
-    } else {
-      showLoadingAndRandom();
-    }
-  } catch (error) {
-    showMessage('Ошибка при получении времени: ' + error.message, true, error);
-  }
-}
-
-function startCountdown(seconds) {
   const timerElement = document.getElementById('timer');
-  if (!timerElement) {
-    console.error('Элемент timer не найден');
-    return;
-  }
-  let timeLeft = seconds;
-  const interval = setInterval(() => {
-    if (timeLeft > 0) {
-      timerElement.textContent = `${timeLeft} сек.`;
-      timeLeft--;
-    } else {
-      clearInterval(interval);
+  const updateInterval = setInterval(async () => {
+    try {
+      const data = await loadLeaderboardDataViaScript();
+      values = data.values;
+      startTime = data.startTime;
+      offset = data.offset;
+
+
+      values.sort((a, b) => b.bet - a.bet);
+      const html = values.length > 0 
+        ? values.map((d, index) => `<li><strong>${index + 1}. ${d.name}</strong> — ${d.bet}</li>`).join('')
+        : '<li>Нет участников</li>';
+      document.querySelector('.leaderboard-list').innerHTML = html;
+    } catch (error) {
+      console.error('Error updating leaderboard:', error);
+    }
+  }, 2000);
+
+  const timerInterval = setInterval(() => {
+    if (!startTime) {
+      timerElement.textContent = 'Ожидание начала...';
+      return;
+    }
+    const nowMs = Date.now();
+    const approxServerTimeMs = nowMs + offset;
+    const elapsedMs = approxServerTimeMs - startTime.getTime();
+    const remainingSec = Math.max(0, 60 - Math.floor(elapsedMs / 1000));
+    timerElement.textContent = `${remainingSec} сек.`;
+    if (remainingSec <= 0) {
+      clearInterval(timerInterval);
+      clearInterval(updateInterval);
       showLoadingAndRandom();
     }
   }, 1000);
@@ -375,8 +255,6 @@ function startCountdown(seconds) {
 async function showLoadingAndRandom() {
   const loading = document.getElementById('loading');
   const winner = document.getElementById('winner');
-  const timer = document.getElementById('timer');
-  if (timer) timer.classList.add('hidden');
   if (loading) loading.classList.remove('hidden');
   setTimeout(async () => {
     if (loading) loading.classList.add('hidden');
@@ -389,7 +267,7 @@ async function pickWinner() {
   const random = Math.floor(Math.random() * (50000 - 1000 + 1)) + 1000;
   let data;
   try {
-    data = await loadLeaderboardDataViaScript();
+    data = (await loadLeaderboardDataViaScript()).values;
   } catch (error) {
     document.getElementById('main').innerHTML = `
       <div class="left-column">
@@ -416,15 +294,36 @@ async function pickWinner() {
     `;
     return;
   }
-  let winner = data[0];
-  let minDiff = Math.abs(random - data[0].bet);
-  for (const user of data) {
+
+  const eligibleData = data.filter(user => Math.abs(random - user.bet) <= 15000);
+  if (eligibleData.length === 0) {
+    document.getElementById('main').innerHTML = `
+      <div class="leaderboard">
+        <div class="left-column">
+          <div id="winner">
+            <h2>Выпало число: ${random}</h2>
+            <h3>Нет победителя</h3>
+          </div>
+        </div>
+        <div class="right-column">
+          <h2>Таблица ставок</h2>
+          <ol class="leaderboard-list">${data.map((d, index) => `<li><strong>${index + 1}. ${d.name}</strong> — ${d.bet}</li>`).join('')}</ol>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  let winner = eligibleData[0];
+  let minDiff = Math.abs(random - eligibleData[0].bet);
+  for (const user of eligibleData) {
     const diff = Math.abs(random - user.bet);
     if (diff < minDiff) {
       winner = user;
       minDiff = diff;
     }
   }
+
   document.getElementById('randomNumber').textContent = random;
   document.getElementById('winnerName').textContent = winner.name;
   document.getElementById('winnerBet').textContent = winner.bet;
