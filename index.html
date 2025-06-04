@@ -2,12 +2,13 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ежедневная ставка</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
       color: #fff;
       display: flex;
       flex-direction: column;
@@ -15,31 +16,49 @@
       justify-content: center;
       height: 100vh;
       margin: 0;
+      overflow-x: hidden;
     }
     .container {
-      background: rgba(0,0,0,0.3);
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
       padding: 20px;
       border-radius: 15px;
       text-align: center;
-      box-shadow: 0 0 15px rgba(0,0,0,0.3);
-      width: 80%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      width: 90%;
       max-width: 600px;
+      transition: transform 0.3s ease;
+    }
+    .container:hover {
+      transform: scale(1.02);
     }
     input[type=range], input[type=text] {
       width: 100%;
-      padding: 8px;
+      padding: 10px;
       margin: 10px 0;
-      border-radius: 5px;
+      border-radius: 8px;
       border: none;
+      font-size: 16px;
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #4CAF50;
+      border-radius: 50%;
+      cursor: pointer;
     }
     .hidden { display: none; }
     .loader {
-      border: 5px solid #f3f3f3;
-      border-top: 5px solid #3498db;
+      border: 6px solid #f3f3f3;
+      border-top: 6px solid #4CAF50;
       border-radius: 50%;
       width: 50px;
       height: 50px;
-      animation: spin 2s linear infinite;
+      animation: spin 1s linear infinite;
       margin: 20px auto;
     }
     @keyframes spin {
@@ -48,35 +67,58 @@
     }
     .leaderboard {
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
+      flex-direction: column;
       margin-top: 20px;
     }
+    @media (min-width: 600px) {
+      .leaderboard {
+        flex-direction: row;
+        justify-content: space-between;
+      }
+      .left-column, .right-column {
+        width: 48%;
+      }
+    }
     .left-column, .right-column {
-      width: 48%;
+      width: 100%;
     }
     .timer {
-      font-size: 2em;
-      margin-bottom: 20px;
+      font-size: 1.5em;
+      margin-bottom: 15px;
+      color: #ffeb3b;
+      text-shadow: 0 0 10px #ffeb3b;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
     }
     .leaderboard-list {
       list-style: none;
       padding: 0;
       text-align: left;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 10px;
+      border-radius: 8px;
     }
     .leaderboard-list li {
-      margin: 5px 0;
+      margin: 8px 0;
+      padding: 5px;
+      transition: background 0.3s;
+    }
+    .leaderboard-list li:hover {
+      background: rgba(255, 255, 255, 0.1);
     }
     .error {
-      color: #ff0000;
+      color: #ff4444;
       font-weight: bold;
-      font-size: 1.5em;
-      background: rgba(0, 0, 0, 0.9);
+      font-size: 1.2em;
+      background: rgba(255, 0, 0, 0.1);
       padding: 15px;
       border-radius: 8px;
       margin: 10px 0;
-      position: relative;
-      text-shadow: 1px 1px 2px white;
+      text-shadow: 0 0 5px #ff4444;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -84,12 +126,12 @@
     .message {
       color: #ffffff;
       font-weight: bold;
-      font-size: 1.5em;
-      background: rgba(0, 0, 0, 0.9);
+      font-size: 1.2em;
+      background: rgba(0, 255, 0, 0.1);
       padding: 15px;
       border-radius: 8px;
       margin: 10px 0;
-      text-shadow: 1px 1px 2px white;
+      text-shadow: 0 0 5px #00ff00;
     }
     .copy-btn {
       position: absolute;
@@ -102,27 +144,55 @@
       font-size: 1em;
       cursor: pointer;
       padding: 5px;
+      transition: color 0.3s;
     }
     .copy-btn:hover {
       color: #ddd;
     }
     .nickname-error {
-      color: #ff0000;
-      font-size: 1.2em;
+      color: #ff4444;
+      font-size: 1em;
       margin-top: 5px;
     }
     button {
-      background-color: #4CAF50;
-      color: white;
-      padding: 10px 20px;
+      background: linear-gradient(45deg, #4CAF50, #45a049);
+      color: #fff;
+      padding: 12px 25px;
       border: none;
-      border-radius: 5px;
+      border-radius: 8px;
       cursor: pointer;
-      margin-top: 10px;
-      transition: background-color 0.3s;
+      margin-top: 15px;
+      font-size: 16px;
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+      transition: all 0.3s ease;
     }
     button:hover {
-      background-color: #45a049;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
+    }
+    @media (max-width: 600px) {
+      .container {
+        padding: 15px;
+        width: 95%;
+      }
+      input[type=range], input[type=text] {
+        font-size: 14px;
+        padding: 8px;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 14px;
+      }
+      .timer {
+        font-size: 1.2em;
+      }
+      .leaderboard-list li {
+        font-size: 14px;
+      }
+      .error, .message {
+        font-size: 1em;
+        padding: 10px;
+      }
     }
   </style>
 </head>
@@ -140,7 +210,7 @@ console.error = function (...args) {
 };
 
 const SHEET_ID = "1DT1Cj5KvJ3ECL2tb7IF-tGcvPxUA4y_69y9TJ8GwRBI";
-const scriptURL = 'https://script.google.com/macros/s/AKfycbxB51F36F4JZmG8XwLBHXptR77x_dLYfnhgvnnEdt9ETHLQ7ePvS1eKbzsMJyS3eoge/exec';
+const scriptURL = 'https://script.google.com/macros/s/AKfycbwxe4xQofbtvazxsuUSVUYkyolns4xjAw16W8a7Eh8M9e-fBkHywC85dHvwrRzYech4/exec';
 
 async function fetchServerDate() {
   const url = `${scriptURL}?action=getServerDate`;
@@ -199,7 +269,7 @@ function renderBetUI() {
     mainElement.innerHTML = `
       <h2>Сделайте свою ставку</h2>
       <input type="range" id="betRange" min="1000" max="50000" value="1000">
-      <div>Ставка: <span id="betValue">1000</span></div>
+      <div>Ставка: <span id="betValue" style="color: #ffeb3b;">1000</span></div>
       <button onclick="enterNickname()">Поставить</button>
     `;
     const betRange = document.getElementById('betRange');
@@ -224,9 +294,9 @@ function enterNickname() {
   const mainElement = document.getElementById('main');
   if (mainElement) {
     mainElement.innerHTML = `
-      <h2>Введите ваш ник</h2>
+      <h2>Введите ваш ник, который вы установили в Telegram</h2>
       <input type="text" id="nickname" value="${storedName}" required>
-      <div id="nickname-error" class="nickname-error hidden">Пожалуйста, введите никнейм</div>
+      <div id="nickname-error" class="nickname-error hidden" style='color:white;'>Пожалуйста, введите никнейм, который вы установили в Telegram</div>
       <label><input type="checkbox" id="id-label" ${rememberMe ? 'checked' : ''}>Запомнить меня</label>
       <button onclick="validateAndSubmit(${bet})">Перейти</button>
     `;
@@ -245,7 +315,7 @@ function validateAndSubmit(bet) {
   }
   const name = nicknameElement.value;
   if (!name.trim()) {
-    errorDiv.textContent = 'Пожалуйста, введите никнейм';
+    errorDiv.textContent = 'Пожалуйста, введите свой никнейм, который вы установили в Telegram.';
     errorDiv.classList.remove('hidden');
     return;
   }
@@ -399,7 +469,7 @@ async function showLeaderboard() {
             <p>Определяем победителя...</p>
           </div>
           <div id="winner" class="hidden">
-            <h2>Выпало число: <span id="randomNumber"></span></h2>
+            <h2>Выпало число(Может быть задержка): <span id="randomNumber"></span></h2>
             <h3>Победитель: <span id="winnerName"></span></h3>
             <p id="winnerBetText" class="hidden">Ставка победителя: <span id="winnerBet"></span></p>
           </div>
