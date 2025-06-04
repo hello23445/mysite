@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Ежедневная ставка</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background: rgba(0,0,0,0.3);
+      padding: 20px;
+      border-radius: 15px;
+      text-align: center;
+      box-shadow: 0 0 15px rgba(0,0,0,0.3);
+      width: 80%;
+      max-width: 600px;
+    }
+    input[type=range], input[type=text] {
+      width: 100%;
+      padding: 8px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border: none;
+    }
+    .hidden { display: none; }
+    .loader {
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #3498db;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 2s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .leaderboard {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-top: 20px;
+    }
+    .left-column, .right-column {
+      width: 48%;
+    }
+    .timer {
+      font-size: 2em;
+      margin-bottom: 20px;
+    }
+    .leaderboard-list {
+      list-style: none;
+      padding: 0;
+      text-align: left;
+    }
+    .leaderboard-list li {
+      margin: 5px 0;
+    }
+    .error {
+      color: #ff0000;
+      font-weight: bold;
+      font-size: 1.5em;
+      background: rgba(0, 0, 0, 0.9);
+      padding: 15px;
+      border-radius: 8px;
+      margin: 10px 0;
+      position: relative;
+      text-shadow: 1px 1px 2px white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .message {
+      color: #ffffff;
+      font-weight: bold;
+      font-size: 1.5em;
+      background: rgba(0, 0, 0, 0.9);
+      padding: 15px;
+      border-radius: 8px;
+      margin: 10px 0;
+      text-shadow: 1px 1px 2px white;
+    }
+    .copy-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1em;
+      cursor: pointer;
+      padding: 5px;
+    }
+    .copy-btn:hover {
+      color: #ddd;
+    }
+    .nickname-error {
+      color: #ff0000;
+      font-size: 1.2em;
+      margin-top: 5px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+<div class="container" id="main"></div>
+
+<script>
+let lastErrorLog = '';
+
+const originalConsoleError = console.error;
+console.error = function (...args) {
+  lastErrorLog = args.join(' ');
+  originalConsoleError.apply(console, args);
+};
+
+const SHEET_ID = "1DT1Cj5KvJ3ECL2tb7IF-tGcvPxUA4y_69y9TJ8GwRBI"; // Для Google Apps Script
+const todayKey = 'dailyBet_' + new Date().toISOString().slice(0, 10); // "dailyBet_2025-06-04"
+const scriptURL = 'https://script.google.com/macros/s/AKfycbyRY2Ak-BHZJJZEb4k4CHI5NR-vTpP-cukZsp4i02bqPhJkJj6ArWddtne2qtZDdFEb/exec';
+
+function showMessage(msg, isError = false, errorObj = null, showCopy = true) {
+  const className = isError ? 'error' : 'message';
+  const copyBtn = isError && showCopy ? `<button class="copy-btn" onclick="copyToClipboard(this, '${errorObj ? errorObj.message.replace(/'/g, "\\'") : ''}')"><i class="fa-solid fa-copy"></i></button>` : '';
+  document.getElementById('main').innerHTML = `<h3 class="${className}">${msg}${copyBtn}</h3>`;
+}
+
+function copyToClipboard(button, errorMsg) {
+  const errorToCopy = errorMsg || lastErrorLog || 'No error logged';
+  navigator.clipboard.writeText(errorToCopy).then(() => {
+    button.innerHTML = '<i class="fa-solid fa-check"></i>';
+    setTimeout(() => button.innerHTML = '<i class="fa-solid fa-copy"></i>', 3000);
+  }).catch(err => {
+    console.error('Failed to copy to clipboard:', err);
+  });
+}
+
+function showLoader() {
+  document.getElementById('main').innerHTML = `<div class="loader"></div><p>Загрузка...</p>`;
+}
+
+function renderBetUI() {
+  document.getElementById('main').innerHTML = `
+    <h2>Сделайте свою ставку</h2>
+    <input type="range" id="betRange" min="1000" max="50000" value="1000">
+    <div>Ставка: <span id="betValue">1000</span></div>
+    <button onclick="enterNickname()">Поставить</button>
+  `;
+  document.getElementById('betRange').oninput = e => {
+    document.getElementById('betValue').textContent = e.target.value;
+  };
+}
+
+function enterNickname() {
+  const bet = document.getElementById('betRange').value;
+  const storedName = localStorage.getItem('username') || '';
+  const rememberMe = localStorage.getItem('rememberMe') === 'true';
+  document.getElementById('main').innerHTML = `
+    <h2>Введите ваш ник</h2>
+    <input type="text" id="nickname" value="${storedName}" required>
+    <div id="nickname-error" class="nickname-error hidden">Пожалуйста, введите никнейм</div>
+    <label><input type="checkbox" id="id-label" ${rememberMe ? 'checked' : ''}>Запомнить меня</label>
+    <button onclick="validateAndSubmit(${bet})">Перейти</button>
+  `;
+}
+
+function validateAndSubmit(bet) {
+  const name = document.getElementById('nickname').value;
+  const errorDiv = document.getElementById('nickname-error');
+  if (!name.trim()) {
+    errorDiv.textContent = 'Пожалуйста, введите никнейм';
+    errorDiv.classList.remove('hidden');
+    return;
+  }
+  errorDiv.classList.add('hidden');
+  submitBet(name, bet);
+}
+
+function showAttemptsExhausted() {
+  document.getElementById('main').innerHTML = `
+    <h3 class="error">Вы исчерпали свои попытки на сегодня. Возвращайтесь завтра!</h3>
+    <p>Введите код для разблокировки:</p>
+    <input type="text" id="unlockCode" placeholder="Введите код">
+    <button onclick="checkUnlockCode()">Подтвердить</button>
+  `;
+}
+
+function checkUnlockCode() {
+  const code = document.getElementById('unlockCode').value;
+  if (code === 'QWERTY') {
+    localStorage.setItem('unlimitedAttempts', 'true');
+    renderBetUI();
+  } else {
+    showMessage('Неверный код', true, null, false);
+  }
+}
+
+async function submitBet(name, bet) {
+  const rememberMe = document.getElementById('id-label').checked;
+  localStorage.setItem('rememberMe', rememberMe);
+  if (rememberMe) {
+    localStorage.setItem('username', name);
+  } else {
+    localStorage.removeItem('username');
+  }
+
+  const unlimitedAttempts = localStorage.getItem('unlimitedAttempts') === 'true';
+  let attempts = parseInt(localStorage.getItem(todayKey) || 0);
+  if (!unlimitedAttempts && attempts >= 2) {
+    showAttemptsExhausted();
+    return;
+  }
+
+  try {
+    showLoader();
+    await sendToSheet(name, bet);
+    await showLeaderboard();
+    initTimer();
+    if (!unlimitedAttempts) {
+      localStorage.setItem(todayKey, attempts + 1);
+    }
+  } catch (error) {
+    showMessage('Ошибка при загрузке данных: ' + error.message, true, error);
+  }
+}
+
+async function sendToSheet(name, bet) {
+  const url = `${scriptURL}?name=${encodeURIComponent(name)}&bet=${bet}`;
+  const response = await fetch(url, { method: 'GET', mode: 'cors' });
+  if (!response.ok) throw new Error('Failed to fetch');
+  const data = await response.json();
+  if (data.error) throw new Error(data.error);
+  if (data.status !== "OK") throw new Error('Unexpected response: ' + JSON.stringify(data));
+}
+
+async function loadLeaderboardDataViaScript() {
+  const url = `${scriptURL}?action=getLeaderboard`;
+  console.log('Fetching leaderboard data via script from:', url);
+  try {
+    const response = await fetch(url, { method: 'GET', mode: 'cors' });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('LoadLeaderboardDataViaScript failed:', response.status, response.statusText, 'Details:', errorText);
+      throw new Error(
+        `Не удалось загрузить данные через Google Apps Script: ${response.status} ${response.statusText}. ` +
+        'Убедитесь, что обработчик "getLeaderboard" добавлен в ваш Google Apps Script.'
+      );
+    }
+    const data = await response.json();
+    console.log('Raw data from script:', data);
+    const rows = data.values || [];
+    // Фильтрация уникальных записей по никнейму, сохраняя последнюю ставку
+    const uniqueData = [];
+    const seenNames = new Set();
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const [name, bet] = rows[i];
+      if (name && !seenNames.has(name)) {
+        seenNames.add(name);
+        uniqueData.unshift({ name, bet: parseInt(bet) });
+      }
+    }
+    return uniqueData;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function showLeaderboard() {
+  showLoader();
+  let data;
+  try {
+    data = await loadLeaderboardDataViaScript();
+  } catch (error) {
+    showMessage(
+      `Ошибка при загрузке таблицы лидеров: ${error.message}. Проверьте настройки Google Apps Script.`,
+      true,
+      error
+    );
+    return;
+  }
+
+  data.sort((a, b) => b.bet - a.bet);
+  const html = data.length > 0 
+    ? data.map((d, index) => `<li><strong>${index + 1}. ${d.name}</strong> — ${d.bet}</li>`).join('')
+    : '<li>Нет участников</li>';
+  document.getElementById('main').innerHTML = `
+    <div class="leaderboard">
+      <div class="left-column">
+        <div class="timer" id="timer"></div>
+        <div id="loading" class="hidden">
+          <div class="loader"></div>
+          <p>Определяем победителя...</p>
+        </div>
+        <div id="winner" class="hidden">
+          <h2>Выпало число: <span id="randomNumber"></span></h2>
+          <h3>Победитель: <span id="winnerName"></span></h3>
+          <p id="winnerBetText" class="hidden">Ставка победителя: <span id="winnerBet"></span></p>
+        </div>
+      </div>
+      <div class="right-column">
+        <h2>Таблица ставок</h2>
+        <ol class="leaderboard-list">${html}</ol>
+      </div>
+    </div>
+  `;
+}
+
+async function getStartTime() {
+  const url = `${scriptURL}?action=getStartTime`;
+  const response = await fetch(url, { method: 'GET', mode: 'cors' });
+  if (!response.ok) throw new Error('Failed to fetch');
+  const data = await response.json();
+  if (data.error) throw new Error(data.error);
+  return new Date(data.startTime);
+}
+
+async function initTimer() {
+  try {
+    const startTime = await getStartTime();
+    const now = new Date();
+    const elapsed = Math.floor((now - startTime) / 1000);
+    const totalTime = 60;
+    const remaining = totalTime - elapsed;
+    if (remaining > 0) {
+      startCountdown(remaining);
+    } else {
+      showLoadingAndRandom();
+    }
+  } catch (error) {
+    showMessage('Ошибка при получении времени: ' + error.message, true, error);
+  }
+}
+
+function startCountdown(seconds) {
+  const timerElement = document.getElementById('timer');
+  if (!timerElement) {
+    console.error('Элемент timer не найден');
+    return;
+  }
+  let timeLeft = seconds;
+  const interval = setInterval(() => {
+    if (timeLeft > 0) {
+      timerElement.textContent = `${timeLeft} сек.`;
+      timeLeft--;
+    } else {
+      clearInterval(interval);
+      showLoadingAndRandom();
+    }
+  }, 1000);
+}
+
+async function showLoadingAndRandom() {
+  const loading = document.getElementById('loading');
+  const winner = document.getElementById('winner');
+  const timer = document.getElementById('timer');
+  if (timer) timer.classList.add('hidden');
+  if (loading) loading.classList.remove('hidden');
+  setTimeout(async () => {
+    if (loading) loading.classList.add('hidden');
+    if (winner) winner.classList.remove('hidden');
+    await pickWinner();
+  }, 5000);
+}
+
+async function pickWinner() {
+  const random = Math.floor(Math.random() * (50000 - 1000 + 1)) + 1000;
+  let data;
+  try {
+    data = await loadLeaderboardDataViaScript();
+  } catch (error) {
+    document.getElementById('main').innerHTML = `
+      <div class="left-column">
+        <div id="winner">
+          <h3 class="error">Ошибка при загрузке данных: ${error.message}<button class="copy-btn" onclick="copyToClipboard(this, '${error.message.replace(/'/g, "\\'")}')"><i class="fa-solid fa-copy"></i></button></h3>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  if (data.length === 0) {
+    document.getElementById('main').innerHTML = `
+      <div class="leaderboard">
+        <div class="left-column">
+          <div id="winner">
+            <h2>Нет победителя</h2>
+          </div>
+        </div>
+        <div class="right-column">
+          <h2>Таблица ставок</h2>
+          <ol class="leaderboard-list"><li>Нет участников</li></ol>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  let winner = data[0];
+  let minDiff = Math.abs(random - data[0].bet);
+  for (const user of data) {
+    const diff = Math.abs(random - user.bet);
+    if (diff < minDiff) {
+      winner = user;
+      minDiff = diff;
+    }
+  }
+  document.getElementById('randomNumber').textContent = random;
+  document.getElementById('winnerName').textContent = winner.name;
+  document.getElementById('winnerBet').textContent = winner.bet;
+  document.getElementById('winnerBetText').classList.remove('hidden');
+  await sendWinnerToSheet(winner.name, winner.bet, random);
+  await clearBetsSheet();
+}
+
+async function sendWinnerToSheet(name, bet, random) {
+  const url = `${scriptURL}?name=${encodeURIComponent(name)}&bet=${encodeURIComponent(bet)}&random=${encodeURIComponent(random)}&action=winner`;
+  const response = await fetch(url, { method: 'GET', mode: 'cors' });
+  if (!response.ok) throw new Error('Failed to fetch');
+  const data = await response.json();
+  if (data.error) throw new Error(data.error);
+  if (data.status !== "OK") throw new Error('Unexpected response: ' + JSON.stringify(data));
+}
+
+async function clearBetsSheet() {
+  const url = `${scriptURL}?action=clearBets`;
+  try {
+    const response = await fetch(url, { method: 'GET', mode: 'cors' });
+    if (!response.ok) throw new Error('Failed to clear Bets sheet');
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    if (data.status === "OK") console.log('Bets sheet cleared successfully');
+  } catch (error) {
+    console.error('Error clearing Bets sheet:', error.message);
+  }
+}
+
+function init() {
+  let attempts = parseInt(localStorage.getItem(todayKey) || 0);
+  const unlimitedAttempts = localStorage.getItem('unlimitedAttempts') === 'true';
+  if (!unlimitedAttempts && attempts >= 2) {
+    showAttemptsExhausted();
+  } else {
+    renderBetUI();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
