@@ -32,7 +32,7 @@
     .container:hover {
       transform: scale(1.02);
     }
-    input[type=range], input[type=text] {
+    input[type=range], input[type=text], input[type=number] {
       width: 100%;
       padding: 10px;
       margin: 10px 0;
@@ -89,6 +89,17 @@
       text-shadow: 0 0 10px #ffeb3b;
       animation: pulse 1.5s infinite;
     }
+    .total-bet {
+      font-size: 2.5em;
+      color: #ffeb3b;
+      text-shadow: 0 0 10px #ffeb3b;
+      margin-top: 10px;
+    }
+    @media (max-width: 600px) {
+      .total-bet {
+        font-size: 2em;
+      }
+    }
     @keyframes pulse {
       0% { transform: scale(1); }
       50% { transform: scale(1.1); }
@@ -107,8 +118,22 @@
       padding: 5px;
       transition: background 0.3s;
     }
+    .leaderboard-list li.your-place {
+      background: rgba(76, 175, 80, 0.3);
+      font-weight: bold;
+    }
     .leaderboard-list li:hover {
       background: rgba(255, 255, 255, 0.1);
+    }
+    .countdown {
+      font-size: 2em;
+      color: #ffeb3b;
+      text-shadow: 0 0 10px #ffeb3b;
+      animation: fadeIn 0.5s;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
     .error {
       color: #ff4444;
@@ -175,7 +200,7 @@
         padding: 15px;
         width: 95%;
       }
-      input[type=range], input[type=text] {
+      input[type=range], input[type=text], input[type=number] {
         font-size: 14px;
         padding: 8px;
       }
@@ -193,6 +218,20 @@
         font-size: 1em;
         padding: 10px;
       }
+      .desktop-only {
+        display: none;
+      }
+      .mobile-only {
+        display: block;
+      }
+    }
+    @media (min-width: 601px) {
+      .mobile-only {
+        display: none;
+      }
+      .desktop-only {
+        display: block;
+      }
     }
   </style>
 </head>
@@ -202,6 +241,11 @@
 <script>
 let lastErrorLog = '';
 let todayKey = '';
+let currentBet = 1000;
+
+function formatNumberWithSpaces(number) {
+  return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
 
 const originalConsoleError = console.error;
 console.error = function (...args) {
@@ -210,18 +254,14 @@ console.error = function (...args) {
 };
 
 const SHEET_ID = "1DT1Cj5KvJ3ECL2tb7IF-tGcvPxUA4y_69y9TJ8GwRBI";
-const scriptURL = 'https://script.google.com/macros/s/AKfycbxuFWMiVBAtPADuM-WMdEIF2Bl7Ck7lqwNCYz9bNRpvYIG51gwInrYAr1fztiMNKcbG/exec';
+const scriptURL = 'https://script.google.com/macros/s/AKfycbwFJwe5nl-fXZe0RT5pavdZxWIVSBfwM3CLYCqKb-qgkIAnV9b-suYLoMMwJQgsor6M/exec';
 
 async function fetchServerDate() {
   const url = `${scriptURL}?action=getServerDate`;
   try {
     const response = await fetch(url, { method: 'GET', mode: 'cors' });
-    console.log('Fetch server date - Response status:', response.status);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch server date: HTTP ${response.status} ${response.statusText}`);
-    }
+    if (!response.ok) throw new Error(`Failed to fetch server date: HTTP ${response.status}`);
     const data = await response.json();
-    console.log('Server date response:', data);
     if (data.error) throw new Error(data.error);
     return data.serverDate;
   } catch (error) {
@@ -231,15 +271,10 @@ async function fetchServerDate() {
 }
 
 function showMessage(msg, isError = false, errorObj = null, showCopy = true) {
-  console.log('Showing message:', msg, 'isError:', isError);
   const className = isError ? 'error' : 'message';
   const copyBtn = isError && showCopy ? `<button class="copy-btn" onclick="copyToClipboard(this, '${errorObj ? errorObj.message.replace(/'/g, "\\'") : ''}')"><i class="fa-solid fa-copy"></i></button>` : '';
   const mainElement = document.getElementById('main');
-  if (mainElement) {
-    mainElement.innerHTML = `<h3 class="${className}">${msg}${copyBtn}</h3>`;
-  } else {
-    console.error('Main element not found');
-  }
+  if (mainElement) mainElement.innerHTML = `<h3 class="${className}">${msg}${copyBtn}</h3>`;
 }
 
 function copyToClipboard(button, errorMsg) {
@@ -247,48 +282,54 @@ function copyToClipboard(button, errorMsg) {
   navigator.clipboard.writeText(errorToCopy).then(() => {
     button.innerHTML = '<i class="fa-solid fa-check"></i>';
     setTimeout(() => button.innerHTML = '<i class="fa-solid fa-copy"></i>', 3000);
-  }).catch(err => {
-    console.error('Failed to copy to clipboard:', err);
-  });
+  }).catch(err => console.error('Failed to copy:', err));
 }
 
 function showLoader() {
-  console.log('Showing loader');
   const mainElement = document.getElementById('main');
-  if (mainElement) {
-    mainElement.innerHTML = `<div class="loader"></div><p>Загрузка...</p>`;
-  } else {
-    console.error('Main element not found');
-  }
+  if (mainElement) mainElement.innerHTML = `<div class="loader"></div><p>Загрузка...</p>`;
 }
 
 function renderBetUI() {
-  console.log('Rendering bet UI');
   const mainElement = document.getElementById('main');
   if (mainElement) {
     mainElement.innerHTML = `
       <h2>Сделайте свою ставку</h2>
-      <input type="range" id="betRange" min="1000" max="50000" value="1000">
-      <div>Ставка: <span id="betValue" style="color: #ffeb3b;">1000</span></div>
+      <div class="desktop-only">
+        <input type="range" id="betRange" min="1000" max="50000" value="${currentBet}">
+      </div>
+      <div class="mobile-only">
+        <input type="number" id="betNumber" min="1000" max="50000" value="${currentBet}" placeholder="Введите ставку (1000-50000)">
+      </div>
+      <div>Ставка: <span id="betValue" style="color: #ffeb3b;">${formatNumberWithSpaces(currentBet)}</span></div>
       <button onclick="enterNickname()">Поставить</button>
     `;
     const betRange = document.getElementById('betRange');
+    const betNumber = document.getElementById('betNumber');
     const betValue = document.getElementById('betValue');
     if (betRange && betValue) {
       betRange.oninput = e => {
-        betValue.textContent = e.target.value;
+        currentBet = parseInt(e.target.value);
+        betNumber.value = currentBet;
+        betValue.textContent = formatNumberWithSpaces(currentBet);
       };
-    } else {
-      console.error('Bet range or bet value element not found');
     }
-  } else {
-    console.error('Main element not found');
+    if (betNumber && betValue) {
+      betNumber.oninput = e => {
+        let value = parseInt(e.target.value);
+        if (isNaN(value)) value = 1000;
+        if (value < 1000) value = 1000;
+        if (value > 50000) value = 50000;
+        e.target.value = value;
+        currentBet = value;
+        betRange.value = value;
+        betValue.textContent = formatNumberWithSpaces(value);
+      };
+    }
   }
 }
 
 function enterNickname() {
-  console.log('Entering nickname UI');
-  const bet = document.getElementById('betRange')?.value || 1000;
   const storedName = localStorage.getItem('username') || '';
   const rememberMe = localStorage.getItem('rememberMe') === 'true';
   const mainElement = document.getElementById('main');
@@ -296,55 +337,66 @@ function enterNickname() {
     mainElement.innerHTML = `
       <h2>Введите ваш ник, который вы установили в Telegram</h2>
       <input type="text" id="nickname" value="${storedName}" required>
-      <div id="nickname-error" class="nickname-error hidden" style='color:white;'>Пожалуйста, введите никнейм, который вы установили в Telegram</div>
+      <div id="nickname-error" class="nickname-error hidden">Пожалуйста, введите никнейм</div>
       <label><input type="checkbox" id="id-label" ${rememberMe ? 'checked' : ''}>Запомнить меня</label>
-      <button onclick="validateAndSubmit(${bet})">Перейти</button>
+      <button onclick="validateAndSubmit(${currentBet})">Перейти</button>
     `;
-  } else {
-    console.error('Main element not found');
   }
 }
 
-function validateAndSubmit(bet) {
-  console.log('Validating and submitting, bet:', bet);
+async function validateAndSubmit(bet) {
   const nicknameElement = document.getElementById('nickname');
   const errorDiv = document.getElementById('nickname-error');
-  if (!nicknameElement || !errorDiv) {
-    console.error('Nickname or error div not found');
-    return;
-  }
+  if (!nicknameElement || !errorDiv) return;
   const name = nicknameElement.value;
   if (!name.trim()) {
-    errorDiv.textContent = 'Пожалуйста, введите свой никнейм, который вы установили в Telegram.';
+    errorDiv.textContent = 'Пожалуйста, введите свой никнейм.';
     errorDiv.classList.remove('hidden');
     return;
   }
   errorDiv.classList.add('hidden');
-  submitBet(name, bet);
+
+  try {
+    const lockStatus = await checkLockStatus();
+    if (lockStatus.isLocked) {
+      showMessage('Игра заблокирована, попробуйте зайти позже!', true, null, false);
+      return;
+    }
+    submitBet(name, bet);
+  } catch (error) {
+    showMessage('Ошибка проверки статуса игры: ' + error.message, true, error);
+  }
+}
+
+async function checkLockStatus() {
+  const url = `${scriptURL}?action=checkLock`;
+  try {
+    const response = await fetch(url, { method: 'GET', mode: 'cors' });
+    if (!response.ok) throw new Error(`Failed to check lock: ${response.status}`);
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    return { isLocked: data.isLocked };
+  } catch (error) {
+    console.error('Check lock error:', error);
+    throw error;
+  }
 }
 
 function showAttemptsExhausted() {
-  console.log('Showing attempts exhausted');
   const mainElement = document.getElementById('main');
   if (mainElement) {
     mainElement.innerHTML = `
-      <h3 class="error">Вы исчерпали свои попытки на сегодня. Возвращайтесь завтра!</h3>
+      <h3 class="error">Вы исчерпали свои попытки на сегодня.</h3>
       <p>Введите код для разблокировки:</p>
       <input type="text" id="unlockCode" placeholder="Введите код">
       <button onclick="checkUnlockCode()">Подтвердить</button>
     `;
-  } else {
-    console.error('Main element not found');
   }
 }
 
 function checkUnlockCode() {
-  console.log('Checking unlock code');
   const unlockCodeElement = document.getElementById('unlockCode');
-  if (!unlockCodeElement) {
-    console.error('Unlock code element not found');
-    return;
-  }
+  if (!unlockCodeElement) return;
   const code = unlockCodeElement.value;
   if (code === 'QWERTY') {
     localStorage.setItem('unlimitedAttempts', 'true');
@@ -355,12 +407,8 @@ function checkUnlockCode() {
 }
 
 async function submitBet(name, bet) {
-  console.log('Submitting bet, name:', name, 'bet:', bet);
   const rememberMeElement = document.getElementById('id-label');
-  if (!rememberMeElement) {
-    console.error('Remember me element not found');
-    return;
-  }
+  if (!rememberMeElement) return;
   const rememberMe = rememberMeElement.checked;
   localStorage.setItem('rememberMe', rememberMe);
   if (rememberMe) {
@@ -379,27 +427,25 @@ async function submitBet(name, bet) {
   try {
     showLoader();
     const response = await sendToSheet(name, bet);
-    console.log('Bet submission response:', response);
-    await showLeaderboard();
-    if (!unlimitedAttempts) {
-      localStorage.setItem(todayKey, attempts + 1);
+    if (response.error === "GameLocked") {
+      showMessage('Игра заблокирована, попробуйте позже!', true, null, false);
+      return;
     }
+    await showLeaderboard();
+    if (!unlimitedAttempts) localStorage.setItem(todayKey, attempts + 1);
   } catch (error) {
-    showMessage('Ошибка при отправке ставки: ' + error.message, true, error);
+    showMessage('Ошибка отправки ставки: ' + error.message, true, error);
   }
 }
 
 async function sendToSheet(name, bet) {
   const url = `${scriptURL}?name=${encodeURIComponent(name)}&bet=${bet}`;
-  console.log('Sending to sheet, URL:', url);
   try {
     const response = await fetch(url, { method: 'GET', mode: 'cors' });
-    console.log('Send to sheet - Response status:', response.status);
-    if (!response.ok) throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+    if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
     const data = await response.json();
-    console.log('Send to sheet response:', data);
-    if (data.error) throw new Error(data.error);
-    if (data.status !== "OK") throw new Error('Unexpected response: ' + JSON.stringify(data));
+    if (data.error) return data;
+    if (data.status !== "OK") throw new Error('Unexpected response');
     return data;
   } catch (error) {
     console.error('Send to sheet error:', error);
@@ -409,30 +455,25 @@ async function sendToSheet(name, bet) {
 
 async function loadLeaderboardDataViaScript() {
   const url = `${scriptURL}?action=getLeaderboard`;
-  console.log('Loading leaderboard, URL:', url);
   try {
     const response = await fetch(url, { method: 'GET', mode: 'cors' });
-    console.log('Load leaderboard - Response status:', response.status);
-    if (!response.ok) throw new Error(`Failed to fetch leaderboard: ${response.status} ${response.statusText}`);
+    if (!response.ok) throw new Error(`Failed to fetch leaderboard: ${response.status}`);
     const data = await response.json();
-    console.log('Leaderboard raw data:', data);
     const values = data.values || [];
-    console.log('Leaderboard values before filtering:', values);
     const startTime = data.startTime ? new Date(data.startTime) : null;
     const serverTimeMs = data.currentTime;
     const clientTimeMs = Date.now();
     const offset = serverTimeMs - clientTimeMs;
     const uniqueData = [];
-    const seenNames = new Set();
+    const seen = new Set();
     for (let i = values.length - 1; i >= 0; i--) {
       const [name, bet] = values[i];
-      console.log(`Processing row ${i}: name=${name}, bet=${bet}`);
-      if (name && !seenNames.has(name) && name.trim() !== '') {
-        seenNames.add(name);
+      const key = `${name}-${bet}`;
+      if (name && bet !== undefined && !isNaN(bet) && !seen.has(key) && name.trim() !== '') {
+        seen.add(key);
         uniqueData.unshift({ name, bet: parseInt(bet) || 0 });
       }
     }
-    console.log('Leaderboard unique data after filtering:', uniqueData);
     return { values: uniqueData, startTime, offset };
   } catch (error) {
     console.error('Leaderboard load error:', error);
@@ -441,22 +482,24 @@ async function loadLeaderboardDataViaScript() {
 }
 
 async function showLeaderboard() {
-  console.log('Showing leaderboard');
   showLoader();
   let leaderboardData;
   try {
     leaderboardData = await loadLeaderboardDataViaScript();
   } catch (error) {
-    showMessage('Ошибка загрузки таблицы лидеров: ' + error.message, true, error);
+    showMessage('Ошибка загрузки таблицы: ' + error.message, true, error);
     return;
   }
 
   let { values, startTime, offset } = leaderboardData;
-  console.log('Leaderboard values for display:', values);
   values.sort((a, b) => (b.bet || 0) - (a.bet || 0));
-  console.log('Sorted leaderboard values:', values);
+  const currentUser = localStorage.getItem('username') || '';
+  const totalBet = values.reduce((sum, d) => sum + (d.bet || 0), 0);
   const html = values.length > 0 
-    ? values.map((d, index) => `<li><strong>${index + 1}. ${d.name}</strong> — ${d.bet || 0}</li>`).join('')
+    ? values.map((d, index) => {
+        const isCurrentUser = d.name === currentUser;
+        return `<li class="${isCurrentUser ? 'your-place' : ''}"><strong>${index + 1}. ${d.name}</strong> — ${formatNumberWithSpaces(d.bet || 0)}${isCurrentUser ? ' (Вы)' : ''}</li>`;
+      }).join('')
     : '<li>Нет участников</li>';
   const mainElement = document.getElementById('main');
   if (mainElement) {
@@ -464,12 +507,13 @@ async function showLeaderboard() {
       <div class="leaderboard">
         <div class="left-column">
           <div class="timer" id="timer">Ожидание...</div>
+          <div class="total-bet" id="totalBet">${formatNumberWithSpaces(totalBet)}</div>
           <div id="loading" class="hidden">
             <div class="loader"></div>
             <p>Определяем победителя...</p>
           </div>
           <div id="winner" class="hidden">
-            <h2>Выпало число(Может быть задержка): <span id="randomNumber"></span></h2>
+            <h2>Выпало число: <span id="randomNumber"></span></h2>
             <h3>Победитель: <span id="winnerName"></span></h3>
             <p id="winnerBetText" class="hidden">Ставка победителя: <span id="winnerBet"></span></p>
           </div>
@@ -480,32 +524,27 @@ async function showLeaderboard() {
         </div>
       </div>
     `;
-  } else {
-    console.error('Main element not found');
-    return;
   }
 
   const timerElement = document.getElementById('timer');
-  if (!timerElement) {
-    console.error('Timer element not found');
-    return;
-  }
+  if (!timerElement) return;
 
   const updateInterval = setInterval(async () => {
     try {
       const data = await loadLeaderboardDataViaScript();
       values = data.values;
       values.sort((a, b) => (b.bet || 0) - (a.bet || 0));
-      console.log('Updated leaderboard values:', values);
+      const totalBet = values.reduce((sum, d) => sum + (d.bet || 0), 0);
       const html = values.length > 0 
-        ? values.map((d, index) => `<li><strong>${index + 1}. ${d.name}</strong> — ${d.bet || 0}</li>`).join('')
+        ? values.map((d, index) => {
+            const isCurrentUser = d.name === currentUser;
+            return `<li class="${isCurrentUser ? 'your-place' : ''}"><strong>${index + 1}. ${d.name}</strong> — ${formatNumberWithSpaces(d.bet || 0)}${isCurrentUser ? ' (Вы)' : ''}</li>`;
+          }).join('')
         : '<li>Нет участников</li>';
       const leaderboardList = document.querySelector('.leaderboard-list');
-      if (leaderboardList) {
-        leaderboardList.innerHTML = html;
-      } else {
-        console.error('Leaderboard list not found');
-      }
+      const totalBetElement = document.getElementById('totalBet');
+      if (leaderboardList) leaderboardList.innerHTML = html;
+      if (totalBetElement) totalBetElement.textContent = formatNumberWithSpaces(totalBet);
     } catch (error) {
       console.error('Leaderboard update error:', error);
     }
@@ -532,30 +571,35 @@ async function showLeaderboard() {
 }
 
 async function showLoadingAndRandom() {
-  console.log('Showing loading and random');
   const loading = document.getElementById('loading');
   const winner = document.getElementById('winner');
   if (loading) loading.classList.remove('hidden');
   try {
+    const countdownElement = document.createElement('div');
+    countdownElement.className = 'countdown';
+    loading.appendChild(countdownElement);
+    for (let i = 5; i > 0; i--) {
+      countdownElement.textContent = i;
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    countdownElement.remove();
+
     const random = await getRandomNumberFromServer();
     if (loading) loading.classList.add('hidden');
     if (winner) winner.classList.remove('hidden');
     await pickWinner(random);
   } catch (error) {
     if (loading) loading.classList.add('hidden');
-    showMessage('Ошибка при определении победителя: ' + error.message, true, error);
+    showMessage('Ошибка определения победителя: ' + error.message, true, error);
   }
 }
 
 async function getRandomNumberFromServer() {
   const url = `${scriptURL}?action=getRandomNumber`;
-  console.log('Getting random number, URL:', url);
   try {
     const response = await fetch(url, { method: 'GET', mode: 'cors' });
-    console.log('Get random number - Response status:', response.status);
-    if (!response.ok) throw new Error(`Failed to fetch random: ${response.status} ${response.statusText}`);
+    if (!response.ok) throw new Error(`Failed to fetch random: ${response.status}`);
     const data = await response.json();
-    console.log('Random number response:', data);
     if (data.error) throw new Error(data.error);
     return data.randomNumber;
   } catch (error) {
@@ -564,13 +608,26 @@ async function getRandomNumberFromServer() {
   }
 }
 
+async function setLock() {
+  const url = `${scriptURL}?action=setLock`;
+  try {
+    const response = await fetch(url, { method: 'GET', mode: 'cors' });
+    if (!response.ok) throw new Error(`Failed to set lock: ${response.status}`);
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    if (data.status !== "OK") throw new Error('Unexpected response');
+  } catch (error) {
+    console.error('Set lock error:', error);
+    throw error;
+  }
+}
+
 async function pickWinner(random) {
-  console.log('Picking winner, random:', random);
   let data;
   try {
     data = (await loadLeaderboardDataViaScript()).values;
   } catch (error) {
-    showMessage('Ошибка при загрузке данных: ' + error.message, true, error);
+    showMessage('Ошибка загрузки данных: ' + error.message, true, error);
     return;
   }
   if (data.length === 0) {
@@ -587,68 +644,62 @@ async function pickWinner(random) {
         </div>
       </div>
     `;
-    return;
-  }
-
-  const eligibleData = data.filter(user => Math.abs(random - (user.bet || 0)) <= 15000);
-  if (eligibleData.length === 0) {
-    document.getElementById('main').innerHTML = `
-      <div class="leaderboard">
-        <div class="left-column">
-          <div id="winner">
-            <h2>Выпало число: ${random}</h2>
-            <h3>Нет победителя</h3>
+  } else {
+    const eligibleData = data.filter(user => Math.abs(random - (user.bet || 0)) <= 15000);
+    if (eligibleData.length === 0) {
+      document.getElementById('main').innerHTML = `
+        <div class="leaderboard">
+          <div class="left-column">
+            <div id="winner">
+              <h2>Выпало число: ${formatNumberWithSpaces(random)}</h2>
+              <h3>Нет победителя</h3>
+            </div>
+          </div>
+          <div class="right-column">
+            <h2>Таблица ставок</h2>
+            <ol class="leaderboard-list">${data.map((d, index) => `<li class="${d.name === localStorage.getItem('username') ? 'your-place' : ''}"><strong>${index + 1}. ${d.name}</strong> — ${formatNumberWithSpaces(d.bet || 0)}${d.name === localStorage.getItem('username') ? ' (Вы)' : ''}</li>`).join('')}</ol>
           </div>
         </div>
-        <div class="right-column">
-          <h2>Таблица ставок</h2>
-          <ol class="leaderboard-list">${data.map((d, index) => `<li><strong>${index + 1}. ${d.name}</strong> — ${d.bet || 0}</li>`).join('')}</ol>
-        </div>
-      </div>
-    `;
-    return;
-  }
+      `;
+    } else {
+      let winner = eligibleData[0];
+      let minDiff = Math.abs(random - (eligibleData[0].bet || 0));
+      for (const user of eligibleData) {
+        const diff = Math.abs(random - (user.bet || 0));
+        if (diff < minDiff) {
+          winner = user;
+          minDiff = diff;
+        }
+      }
 
-  let winner = eligibleData[0];
-  let minDiff = Math.abs(random - (eligibleData[0].bet || 0));
-  for (const user of eligibleData) {
-    const diff = Math.abs(random - (user.bet || 0));
-    if (diff < minDiff) {
-      winner = user;
-      minDiff = diff;
+      const currentUser = localStorage.getItem('username') || '';
+      const winnerText = winner.name + (winner.name === currentUser ? ' (Вы)' : '');
+
+      const randomNumberElement = document.getElementById('randomNumber');
+      const winnerNameElement = document.getElementById('winnerName');
+      const winnerBetElement = document.getElementById('winnerBet');
+      const winnerBetTextElement = document.getElementById('winnerBetText');
+      if (randomNumberElement && winnerNameElement && winnerBetElement && winnerBetTextElement) {
+        randomNumberElement.textContent = formatNumberWithSpaces(random);
+        winnerNameElement.textContent = winnerText;
+        winnerBetElement.textContent = formatNumberWithSpaces(winner.bet || 0);
+        winnerBetTextElement.classList.remove('hidden');
+      }
+      await sendWinnerToSheet(winner.name, winner.bet, random);
     }
   }
-
-  const randomNumberElement = document.getElementById('randomNumber');
-  const winnerNameElement = document.getElementById('winnerName');
-  const winnerBetElement = document.getElementById('winnerBet');
-  const winnerBetTextElement = document.getElementById('winnerBetText');
-  if (randomNumberElement && winnerNameElement && winnerBetElement && winnerBetTextElement) {
-    randomNumberElement.textContent = random;
-    winnerNameElement.textContent = winner.name;
-    winnerBetElement.textContent = winner.bet || 0;
-    winnerBetTextElement.classList.remove('hidden');
-  } else {
-    console.error('Winner elements not found');
-  }
-  await sendWinnerToSheet(winner.name, winner.bet, random);
-  // Задержка в 10 секунд перед очисткой
-  setTimeout(async () => {
-    await clearBetsSheet();
-  }, 10000);
+  await setLock();
+  setTimeout(async () => await clearBetsSheet(), 10000);
 }
 
 async function sendWinnerToSheet(name, bet, random) {
   const url = `${scriptURL}?name=${encodeURIComponent(name)}&bet=${encodeURIComponent(bet)}&random=${encodeURIComponent(random)}&action=winner`;
-  console.log('Sending winner to sheet, URL:', url);
   try {
     const response = await fetch(url, { method: 'GET', mode: 'cors' });
-    console.log('Send winner - Response status:', response.status);
-    if (!response.ok) throw new Error(`Failed to fetch winner: ${response.status} ${response.statusText}`);
+    if (!response.ok) throw new Error(`Failed to fetch winner: ${response.status}`);
     const data = await response.json();
-    console.log('Send winner response:', data);
     if (data.error) throw new Error(data.error);
-    if (data.status !== "OK") throw new Error('Unexpected response: ' + JSON.stringify(data));
+    if (data.status !== "OK") throw new Error('Unexpected response');
   } catch (error) {
     console.error('Send winner error:', error);
     throw error;
@@ -657,15 +708,12 @@ async function sendWinnerToSheet(name, bet, random) {
 
 async function clearBetsSheet() {
   const url = `${scriptURL}?action=clearBets`;
-  console.log('Clearing bets sheet, URL:', url);
   try {
     const response = await fetch(url, { method: 'GET', mode: 'cors' });
-    console.log('Clear bets - Response status:', response.status);
-    if (!response.ok) throw new Error(`Failed to clear bets: ${response.status} ${response.statusText}`);
+    if (!response.ok) throw new Error(`Failed to clear bets: ${response.status}`);
     const data = await response.json();
-    console.log('Clear bets response:', data);
     if (data.error) throw new Error(data.error);
-    if (data.status === "OK") console.log('Bets sheet cleared successfully');
+    if (data.status === "OK") console.log('Bets sheet cleared');
   } catch (error) {
     console.error('Clear bets error:', error);
     throw error;
@@ -673,13 +721,9 @@ async function clearBetsSheet() {
 }
 
 async function init() {
-  console.log('Initializing app');
   todayKey = 'dailyBet_' + (await fetchServerDate());
-  console.log('todayKey:', todayKey);
-
   let attempts = parseInt(localStorage.getItem(todayKey) || 0);
   const unlimitedAttempts = localStorage.getItem('unlimitedAttempts') === 'true';
-  console.log('Attempts:', attempts, 'Unlimited:', unlimitedAttempts);
   if (!unlimitedAttempts && attempts >= 2) {
     showAttemptsExhausted();
   } else {
