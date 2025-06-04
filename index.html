@@ -460,7 +460,7 @@ async function submitBet(name, bet) {
     showLoader();
     const response = await sendToSheet(name, bet);
     if (response.error === "GameLocked") {
-      showMessage('Игра заблокирована, попробуйте позже!', true, null, false);
+      showMessage('Игра заблокирована, попробуйте зайти позже!', true, null, false);
       return;
     }
     await showLeaderboard();
@@ -525,11 +525,11 @@ async function showLeaderboard() {
 
   let { values, startTime, offset } = leaderboardData;
   values.sort((a, b) => (b.bet || 0) - (a.bet || 0));
-  const currentUser = localStorage.getItem('username') || '';
+  const currentUser = localStorage.getItem('username')?.trim() || '';
   const totalBet = values.reduce((sum, d) => sum + (d.bet || 0), 0);
   const html = values.length > 0 
     ? values.map((d, index) => {
-        const isCurrentUser = d.name === currentUser;
+        const isCurrentUser = d.name.trim() === currentUser;
         return `<li class="${isCurrentUser ? 'your-place' : ''}"><strong>${index + 1}. ${d.name}</strong> — ${formatNumberWithSpaces(d.bet || 0)}${isCurrentUser ? ' (Вы)' : ''}</li>`;
       }).join('')
     : '<li>Нет участников</li>';
@@ -569,7 +569,7 @@ async function showLeaderboard() {
       const totalBet = values.reduce((sum, d) => sum + (d.bet || 0), 0);
       const html = values.length > 0 
         ? values.map((d, index) => {
-            const isCurrentUser = d.name === currentUser;
+            const isCurrentUser = d.name.trim() === currentUser;
             return `<li class="${isCurrentUser ? 'your-place' : ''}"><strong>${index + 1}. ${d.name}</strong> — ${formatNumberWithSpaces(d.bet || 0)}${isCurrentUser ? ' (Вы)' : ''}</li>`;
           }).join('')
         : '<li>Нет участников</li>';
@@ -662,6 +662,7 @@ async function pickWinner(random) {
     showMessage('Ошибка загрузки данных: ' + error.message, true, error);
     return;
   }
+  const currentUser = localStorage.getItem('username')?.trim() || '';
   if (data.length === 0) {
     document.getElementById('main').innerHTML = `
       <div class="leaderboard">
@@ -689,7 +690,7 @@ async function pickWinner(random) {
           </div>
           <div class="right-column">
             <h2>Таблица ставок</h2>
-            <ol class="leaderboard-list">${data.map((d, index) => `<li class="${d.name === localStorage.getItem('username') ? 'your-place' : ''}"><strong>${index + 1}. ${d.name}</strong> — ${formatNumberWithSpaces(d.bet || 0)}${d.name === localStorage.getItem('username') ? ' (Вы)' : ''}</li>`).join('')}</ol>
+            <ol class="leaderboard-list">${data.map((d, index) => `<li class="${d.name.trim() === currentUser ? 'your-place' : ''}"><strong>${index + 1}. ${d.name}</strong> — ${formatNumberWithSpaces(d.bet || 0)}${d.name.trim() === currentUser ? ' (Вы)' : ''}</li>`).join('')}</ol>
           </div>
         </div>
       `;
@@ -704,8 +705,7 @@ async function pickWinner(random) {
         }
       }
 
-      const currentUser = localStorage.getItem('username') || '';
-      const winnerText = winner.name + (winner.name === currentUser ? ' (Вы)' : '');
+      const winnerText = winner.name + (winner.name.trim() === currentUser ? ' (Вы)' : '');
 
       const randomNumberElement = document.getElementById('randomNumber');
       const winnerNameElement = document.getElementById('winnerName');
@@ -760,6 +760,19 @@ async function init() {
     showAttemptsExhausted();
   } else {
     renderBetUI();
+  }
+
+  // Добавляем обработчик для скрытия клавиатуры при клике на пустое место
+  const container = document.querySelector('.container');
+  if (container) {
+    container.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!target.closest('input') && !target.closest('button')) {
+        if (document.activeElement && document.activeElement.blur) {
+          document.activeElement.blur();
+        }
+      }
+    });
   }
 }
 
