@@ -174,7 +174,7 @@
     .copy-btn:hover {
       color: #ddd;
     }
-    .nickname-error {
+    .nickname-error, .bet-error {
       color: #ff4444;
       font-size: 1em;
       margin-top: 5px;
@@ -299,9 +299,10 @@ function renderBetUI() {
         <input type="range" id="betRange" min="1000" max="50000" value="${currentBet}">
       </div>
       <div class="mobile-only">
-        <input type="number" id="betNumber" min="1000" max="50000" value="${currentBet}" placeholder="Введите ставку (1000-50000)">
+        <input type="number" id="betNumber" value="${currentBet}" placeholder="Введите ставку">
       </div>
       <div>Ставка: <span id="betValue" style="color: #ffeb3b;">${formatNumberWithSpaces(currentBet)}</span></div>
+      <div id="bet-error" class="bet-error hidden"></div>
       <button onclick="enterNickname()">Поставить</button>
     `;
     const betRange = document.getElementById('betRange');
@@ -310,26 +311,37 @@ function renderBetUI() {
     if (betRange && betValue) {
       betRange.oninput = e => {
         currentBet = parseInt(e.target.value);
-        betNumber.value = currentBet;
+        if (betNumber) betNumber.value = currentBet;
         betValue.textContent = formatNumberWithSpaces(currentBet);
       };
     }
     if (betNumber && betValue) {
       betNumber.oninput = e => {
-        let value = parseInt(e.target.value);
-        if (isNaN(value)) value = 1000;
-        if (value < 1000) value = 1000;
-        if (value > 50000) value = 50000;
-        e.target.value = value;
-        currentBet = value;
-        betRange.value = value;
-        betValue.textContent = formatNumberWithSpaces(value);
+        let value = e.target.value;
+        currentBet = value; // Сохраняем введенное значение как есть
+        betValue.textContent = formatNumberWithSpaces(value || 0);
       };
     }
   }
 }
 
 function enterNickname() {
+  const bet = parseInt(currentBet);
+  const betErrorDiv = document.getElementById('bet-error');
+  if (betErrorDiv) {
+    if (isNaN(bet) || bet < 1000) {
+      betErrorDiv.textContent = 'Ставка не может быть ниже 1 000';
+      betErrorDiv.classList.remove('hidden');
+      return;
+    } else if (bet > 50000) {
+      betErrorDiv.textContent = 'Ставка не должна быть выше 50 000';
+      betErrorDiv.classList.remove('hidden');
+      return;
+    } else {
+      betErrorDiv.classList.add('hidden');
+    }
+  }
+
   const storedName = localStorage.getItem('username') || '';
   const rememberMe = localStorage.getItem('rememberMe') === 'true';
   const mainElement = document.getElementById('main');
@@ -338,23 +350,43 @@ function enterNickname() {
       <h2>Введите ваш ник, который вы установили в Telegram</h2>
       <input type="text" id="nickname" value="${storedName}" required>
       <div id="nickname-error" class="nickname-error hidden">Пожалуйста, введите никнейм</div>
+      <div id="bet-error" class="bet-error hidden"></div>
       <label><input type="checkbox" id="id-label" ${rememberMe ? 'checked' : ''}>Запомнить меня</label>
-      <button onclick="validateAndSubmit(${currentBet})">Перейти</button>
+      <button onclick="validateAndSubmit()">Перейти</button>
     `;
   }
 }
 
-async function validateAndSubmit(bet) {
+async function validateAndSubmit() {
   const nicknameElement = document.getElementById('nickname');
-  const errorDiv = document.getElementById('nickname-error');
-  if (!nicknameElement || !errorDiv) return;
+  const nicknameErrorDiv = document.getElementById('nickname-error');
+  const betErrorDiv = document.getElementById('bet-error');
+  if (!nicknameElement || !nicknameErrorDiv || !betErrorDiv) return;
   const name = nicknameElement.value;
+  const bet = parseInt(currentBet);
+  let hasError = false;
+
   if (!name.trim()) {
-    errorDiv.textContent = 'Пожалуйста, введите свой никнейм.';
-    errorDiv.classList.remove('hidden');
-    return;
+    nicknameErrorDiv.textContent = 'Пожалуйста, введите свой никнейм.';
+    nicknameErrorDiv.classList.remove('hidden');
+    hasError = true;
+  } else {
+    nicknameErrorDiv.classList.add('hidden');
   }
-  errorDiv.classList.add('hidden');
+
+  if (isNaN(bet) || bet < 1000) {
+    betErrorDiv.textContent = 'Ставка не может быть ниже 1 000';
+    betErrorDiv.classList.remove('hidden');
+    hasError = true;
+  } else if (bet > 50000) {
+    betErrorDiv.textContent = 'Ставка не должна быть выше 50 000';
+    betErrorDiv.classList.remove('hidden');
+    hasError = true;
+  } else {
+    betErrorDiv.classList.add('hidden');
+  }
+
+  if (hasError) return;
 
   try {
     const lockStatus = await checkLockStatus();
