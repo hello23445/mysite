@@ -112,6 +112,23 @@
       background: rgba(0, 0, 0, 0.2);
       padding: 10px;
       border-radius: 8px;
+      max-height: 300px; /* Ограничиваем высоту таблицы */
+      overflow-y: auto; /* Включаем вертикальную прокрутку */
+    }
+    /* Стили для полосы прокрутки */
+    .leaderboard-list::-webkit-scrollbar {
+      width: 8px;
+    }
+    .leaderboard-list::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+    .leaderboard-list::-webkit-scrollbar-thumb {
+      background: #4CAF50;
+      border-radius: 4px;
+    }
+    .leaderboard-list::-webkit-scrollbar-thumb:hover {
+      background: #45a049;
     }
     .leaderboard-list li {
       margin: 8px 0;
@@ -210,6 +227,9 @@
       }
       .timer {
         font-size: 1.2em;
+      }
+      .leaderboard-list {
+        max-height: 200px; /* Меньшая высота для мобильных */
       }
       .leaderboard-list li {
         font-size: 14px;
@@ -318,7 +338,7 @@ function renderBetUI() {
     if (betNumber && betValue) {
       betNumber.oninput = e => {
         let value = e.target.value;
-        currentBet = value; // Сохраняем введенное значение как есть
+        currentBet = value;
         betValue.textContent = formatNumberWithSpaces(value || 0);
       };
     }
@@ -460,7 +480,7 @@ async function submitBet(name, bet) {
     showLoader();
     const response = await sendToSheet(name, bet);
     if (response.error === "GameLocked") {
-      showMessage('Игра заблокирована, попробуйте зайти позже!', true, null, false);
+      showMessage('Игра заблокирована, попробуйте позже!', true, null, false);
       return;
     }
     await showLeaderboard();
@@ -545,7 +565,7 @@ async function showLeaderboard() {
             <p>Определяем победителя...</p>
           </div>
           <div id="winner" class="hidden">
-            <h2>Выпало число: <span id="randomNumber"></span></h2>
+            <h2>Выпало число(Это может занять время): <span id="randomNumber"></span></h2>
             <h3>Победитель: <span id="winnerName"></span></h3>
             <p id="winnerBetText" class="hidden">Ставка победителя: <span id="winnerBet"></span></p>
           </div>
@@ -762,7 +782,6 @@ async function init() {
     renderBetUI();
   }
 
-  // Добавляем обработчик для скрытия клавиатуры при клике на пустое место
   const container = document.querySelector('.container');
   if (container) {
     container.addEventListener('click', (event) => {
