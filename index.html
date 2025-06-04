@@ -210,7 +210,7 @@ console.error = function (...args) {
 };
 
 const SHEET_ID = "1DT1Cj5KvJ3ECL2tb7IF-tGcvPxUA4y_69y9TJ8GwRBI";
-const scriptURL = 'https://script.google.com/macros/s/AKfycbwxe4xQofbtvazxsuUSVUYkyolns4xjAw16W8a7Eh8M9e-fBkHywC85dHvwrRzYech4/exec';
+const scriptURL = 'https://script.google.com/macros/s/AKfycbxuFWMiVBAtPADuM-WMdEIF2Bl7Ck7lqwNCYz9bNRpvYIG51gwInrYAr1fztiMNKcbG/exec';
 
 async function fetchServerDate() {
   const url = `${scriptURL}?action=getServerDate`;
@@ -632,7 +632,10 @@ async function pickWinner(random) {
     console.error('Winner elements not found');
   }
   await sendWinnerToSheet(winner.name, winner.bet, random);
-  await clearBetsSheet();
+  // Задержка в 10 секунд перед очисткой
+  setTimeout(async () => {
+    await clearBetsSheet();
+  }, 10000);
 }
 
 async function sendWinnerToSheet(name, bet, random) {
