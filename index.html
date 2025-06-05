@@ -82,27 +82,92 @@
     .left-column, .right-column {
       width: 100%;
     }
+    .timer-container {
+      position: relative;
+      display: inline-block;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+      margin-bottom: 20px;
+    }
     .timer {
-      font-size: 1.5em;
-      margin-bottom: 15px;
+      font-size: 4em;
       color: #ffeb3b;
       text-shadow: 0 0 10px #ffeb3b;
-      animation: pulse 1.5s infinite, rotate 0.5s infinite;
-      transition: color 1s ease;
+      position: relative;
+      display: inline-flex;
+      transition: color 1s ease, text-shadow 0.5s ease;
     }
-    .timer.warning {
-      color: #ff5555;
-      text-shadow: 0 0 10px #ff5555;
+    .timer.active {
+      animation: pulse 1.5s infinite;
+    }
+    .timer.active.warning {
+      color: #ff3333;
+      text-shadow: 0 0 15px #ff3333, 0 0 25px #ff3333;
+      animation: pulse 0.8s infinite, flicker 0.2s infinite;
+    }
+    .timer span {
+      display: inline-block;
+    }
+    .timer.active span {
+      animation: charRotate 2s infinite;
     }
     @keyframes pulse {
       0% { transform: scale(1); }
-      50% { transform: scale(1.2); }
+      50% { transform: scale(1.3); }
       100% { transform: scale(1); }
     }
-    @keyframes rotate {
-      0% { transform: rotate(-2deg); }
-      50% { transform: rotate(2deg); }
-      100% { transform: rotate(-2deg); }
+    @keyframes charRotate {
+      0% { transform: rotate(-3deg); }
+      50% { transform: rotate(3deg); }
+      100% { transform: rotate(-3deg); }
+    }
+    @keyframes flicker {
+      0% { opacity: 1; }
+      50% { opacity: 0.8; }
+      100% { opacity: 1; }
+    }
+    .timer-wave {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 100px;
+      height: 100px;
+      background: radial-gradient(circle, rgba(255, 235, 59, 0.3), transparent);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      z-index: -1;
+    }
+    .timer.active .timer-wave {
+      animation: wave 2s infinite;
+    }
+    .timer-wave:nth-child(2) {
+      animation-delay: 0.5s;
+      width: 120px;
+      height: 120px;
+    }
+    @keyframes wave {
+      0% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+      100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+    }
+    .spark {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: #ffeb3b;
+      border-radius: 50%;
+      z-index: -1;
+    }
+    .timer.active .spark {
+      animation: spark 1.5s infinite;
+    }
+    .timer.active.warning .spark {
+      background: #ff3333;
+    }
+    @keyframes spark {
+      0% { transform: translate(0, 0); opacity: 1; }
+      100% { transform: translate(calc(50px * var(--dx)), calc(50px * var(--dy))); opacity: 0; }
     }
     .total-bet {
       font-size: 2.5em;
@@ -111,6 +176,20 @@
       margin-top: 10px;
     }
     @media (max-width: 600px) {
+      .timer {
+        font-size: 3em;
+      }
+      .timer-container {
+        padding: 10px;
+      }
+      .timer-wave {
+        width: 80px;
+        height: 80px;
+      }
+      .timer-wave:nth-child(2) {
+        width: 100px;
+        height: 100px;
+      }
       .total-bet {
         font-size: 2em;
       }
@@ -155,16 +234,6 @@
     }
     .leaderboard-table tr:nth-child(even) {
       background: rgba(0, 0, 0, 0.05);
-    }
-    .countdown {
-      font-size: 2em;
-      color: #ffeb3b;
-      text-shadow: 0 0 10px #ffeb3b;
-      animation: fadeIn 0.5s;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
     }
     .error {
       color: #ff4444;
@@ -249,6 +318,31 @@
       justify-content: center;
       gap: 10px;
     }
+    .notification {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 0, 0, 0.9);
+      color: #fff;
+      padding: 15px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      font-size: 16px;
+      font-weight: bold;
+      display: none;
+      text-align: center;
+    }
+    .notification.visible {
+      display: block;
+    }
+    .notification button {
+      background: linear-gradient(45deg, #FFD700, #FF8C00);
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 14px;
+    }
     @media (max-width: 600px) {
       .container {
         padding: 15px;
@@ -266,9 +360,6 @@
         padding: 12px 30px;
         font-size: 16px;
       }
-      .timer {
-        font-size: 1.2em;
-      }
       .leaderboard-scroll {
         max-height: 200px;
       }
@@ -278,6 +369,15 @@
       .error, .message {
         font-size: 1em;
         padding: 10px;
+      }
+      .notification {
+        width: 90%;
+        font-size: 14px;
+        padding: 10px 15px;
+      }
+      .notification button {
+        font-size: 12px;
+        padding: 8px 15px;
       }
       .desktop-only {
         display: none;
@@ -298,6 +398,10 @@
 </head>
 <body>
 <div class="container" id="main"></div>
+<div class="notification" id="activityNotification">
+  <p>Вернитесь в игру, иначе будете исключены через 4 секунды!</p>
+  <button onclick="confirmActivity()">Я подтверждаю, что я активен</button>
+</div>
 
 <script>
 // Генерация UUID для уникального идентификатора пользователя
@@ -318,6 +422,7 @@ if (!userId) {
 let lastErrorLog = '';
 let todayKey = '';
 let currentBet = 1000;
+let activityInterval = null;
 
 function formatNumberWithSpaces(number) {
   return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -330,7 +435,7 @@ console.error = function (...args) {
 };
 
 const SHEET_ID = "1DT1Cj5KvJ3ECL2tb7IF-tGcvPxUA4y_69y9TJ8GwRBI";
-const scriptURL = 'https://script.google.com/macros/s/AKfycbyWkXEHDX1EBNAT8A3BbTl32lwtbmlZTWpfhUktG-D36Um5fVrnQhaAgFGU2IhsnDbI/exec';
+const scriptURL = 'https://script.google.com/macros/s/AKfycbztmM8xaRVe0aZJkX2Mf18yy5JDPZ79w7gswUxY9QFI_oJfN3xJxGoaeAstBpWl8aQ-/exec';
 
 async function fetchServerDate() {
   const url = `${scriptURL}?action=getServerDate`;
@@ -343,6 +448,52 @@ async function fetchServerDate() {
   } catch (error) {
     console.error('Fetch server date error:', error.message);
     return new Date().toISOString().slice(0, 10);
+  }
+}
+
+async function checkUserParticipation() {
+  const url = `${scriptURL}?action=checkParticipation&userId=${encodeURIComponent(userId)}`;
+  try {
+    const response = await fetch(url, { method: 'GET', mode: 'cors' });
+    if (!response.ok) throw new Error(`Failed to check participation: ${response.status}`);
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    return data.participates;
+  } catch (error) {
+    console.error('Check participation error:', error);
+    return false;
+  }
+}
+
+async function updateUserActivity() {
+  const url = `${scriptURL}?action=updateActivity&userId=${encodeURIComponent(userId)}`;
+  try {
+    const response = await fetch(url, { method: 'GET', mode: 'cors' });
+    if (!response.ok) throw new Error(`Failed to update activity: ${response.status}`);
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+  } catch (error) {
+    console.error('Update activity error:', error);
+  }
+}
+
+function confirmActivity() {
+  updateUserActivity();
+  const notification = document.getElementById('activityNotification');
+  if (notification) notification.classList.remove('visible');
+}
+
+async function removeUser() {
+  const url = `${scriptURL}?action=removeUser&userId=${encodeURIComponent(userId)}`;
+  try {
+    const response = await fetch(url, { method: 'GET', mode: 'cors' });
+    if (!response.ok) throw new Error(`Failed to remove user: ${response.status}`);
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    return data.status === "OK";
+  } catch (error) {
+    console.error('Remove user error:', error);
+    return false;
   }
 }
 
@@ -368,6 +519,10 @@ function showLoader() {
 }
 
 function renderBetUI() {
+  if (activityInterval) {
+    clearInterval(activityInterval);
+    activityInterval = null;
+  }
   const mainElement = document.getElementById('main');
   if (mainElement) {
     mainElement.innerHTML = `
@@ -497,6 +652,10 @@ async function checkLockStatus() {
 }
 
 function showAttemptsExhausted() {
+  if (activityInterval) {
+    clearInterval(activityInterval);
+    activityInterval = null;
+  }
   const mainElement = document.getElementById('main');
   if (mainElement) {
     mainElement.innerHTML = `
@@ -542,7 +701,7 @@ async function submitBet(name, bet) {
     showLoader();
     const response = await sendToSheet(name, bet, userId);
     if (response.error === "GameLocked") {
-      showMessage('Игра заблокирована, попробуйте зайти позже!', true, null, false);
+      showMessage('Игра заблокирована, попробуйте позже!', true, null, false);
       return;
     }
     await showLeaderboard();
@@ -583,11 +742,12 @@ async function loadLeaderboardDataViaScript() {
     const uniqueData = [];
 
     for (let i = 0; i < values.length; i++) {
-      const [userId, name, bet] = values[i];
+      const [userId, name, bet, lastActivity] = values[i];
       if (userId && name && bet !== undefined && !isNaN(bet) && name.trim() !== '') {
         const betValue = parseInt(bet) || 0;
         const isCurrentUser = (name.trim() === currentUser && userId === currentUserId);
-        uniqueData.push({ userId, name, bet: betValue, isCurrentUser });
+        const isOnline = lastActivity ? (new Date().getTime() - new Date(lastActivity).getTime()) < 20000 : false; // Уменьшено до 20 секунд
+        uniqueData.push({ userId, name, bet: betValue, isCurrentUser, isOnline });
       }
     }
 
@@ -598,20 +758,9 @@ async function loadLeaderboardDataViaScript() {
   }
 }
 
-async function showLeaderboard() {
-  showLoader();
-  let leaderboardData;
-  try {
-    leaderboardData = await loadLeaderboardDataViaScript();
-  } catch (error) {
-    showMessage('Ошибка загрузки таблицы: ' + error.message, true, error);
-    return;
-  }
-
-  let { values, startTime, offset } = leaderboardData;
+function renderLeaderboardTable(values) {
   values.sort((a, b) => (b.bet || 0) - (a.bet || 0));
-  const totalBet = values.reduce((sum, d) => sum + (d.bet || 0), 0);
-  const html = values.length > 0 
+  return values.length > 0 
     ? `
       <table class="leaderboard-table">
         <thead>
@@ -625,7 +774,7 @@ async function showLeaderboard() {
           ${values.map((d, index) => `
             <tr class="${d.isCurrentUser ? 'your-place' : ''}">
               <td>${index + 1}</td>
-              <td>${d.name}${d.isCurrentUser ? ' (Вы)' : ''}</td>
+              <td>${d.name}${d.isCurrentUser ? ' (Вы)' : ''}${!d.isOnline && !d.isCurrentUser ? ' (Не в сети)' : ''}</td>
               <td>${formatNumberWithSpaces(d.bet || 0)}</td>
             </tr>
           `).join('')}
@@ -633,16 +782,38 @@ async function showLeaderboard() {
       </table>
     `
     : '<p>Нет участников</p>';
+}
+
+async function showLeaderboard() {
+  showLoader();
+  let leaderboardData;
+  try {
+    leaderboardData = await loadLeaderboardDataViaScript();
+  } catch (error) {
+    showMessage('Ошибка загрузки таблицы: ' + error.message, true, error);
+    return;
+  }
+
+  let { values, startTime, offset } = leaderboardData;
+  const totalBet = values.reduce((sum, d) => sum + (d.bet || 0), 0);
+  const html = renderLeaderboardTable(values);
   const mainElement = document.getElementById('main');
   if (mainElement) {
     mainElement.innerHTML = `
       <div class="leaderboard">
         <div class="left-column" style="display: flex; flex-direction: column; justify-content: center;">
-          <div class="timer" id="timer">Ожидание...</div>
+          <div class="timer-container" id="timerContainer">
+            <div class="timer" id="timer">Ожидание...</div>
+            <div class="timer-wave"></div>
+            <div class="timer-wave"></div>
+            <div class="spark" style="--dx: ${Math.random() * 2 - 1}; --dy: ${Math.random() * 2 - 1}; animation-delay: ${Math.random()}s;"></div>
+            <div class="spark" style="--dx: ${Math.random() * 2 - 1}; --dy: ${Math.random() * 2 - 1}; animation-delay: ${Math.random()}s;"></div>
+            <div class="spark" style="--dx: ${Math.random() * 2 - 1}; --dy: ${Math.random() * 2 - 1}; animation-delay: ${Math.random()}s;"></div>
+          </div>
           <div class="total-bet" id="totalBet">${formatNumberWithSpaces(totalBet)}</div>
           <div id="loading" class="hidden">
             <div class="loader"></div>
-            <p>Определяем пользователя...</p>
+            <p>Определяем победителя...</p>
           </div>
           <div id="winner" class="hidden">
             <h2>Выпало число (Может быть задержка): <span id="randomNumber"></span></h2>
@@ -665,38 +836,52 @@ async function showLeaderboard() {
   const timerElement = document.getElementById('timer');
   if (!timerElement) return;
 
+  // Запускаем отслеживание активности
+  if (!activityInterval) {
+    await updateUserActivity();
+    activityInterval = setInterval(updateUserActivity, 5000);
+  }
+
+  // Обработчик кликов по экрану для подтверждения активности
+  document.body.addEventListener('click', updateUserActivity);
+
+  let inactivityTimeout = null;
+  const notification = document.getElementById('activityNotification');
+
   const updateInterval = setInterval(async () => {
     try {
       const data = await loadLeaderboardDataViaScript();
       values = data.values;
-      values.sort((a, b) => (b.bet || 0) - (a.bet || 0));
       const totalBet = values.reduce((sum, d) => sum + (d.bet || 0), 0);
-      const html = values.length > 0 
-        ? `
-          <table class="leaderboard-table">
-            <thead>
-              <tr>
-                <th>№</th>
-                <th>Имя</th>
-                <th>Ставка</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${values.map((d, index) => `
-                <tr class="${d.isCurrentUser ? 'your-place' : ''}">
-                  <td>${index + 1}</td>
-                  <td>${d.name}${d.isCurrentUser ? ' (Вы)' : ''}</td>
-                  <td>${formatNumberWithSpaces(d.bet || 0)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        `
-        : '<p>Нет участников</p>';
+      const html = renderLeaderboardTable(values);
       const leaderboardScroll = document.querySelector('.leaderboard-scroll');
       const totalBetElement = document.getElementById('totalBet');
       if (leaderboardScroll) leaderboardScroll.innerHTML = html;
       if (totalBetElement) totalBetElement.textContent = formatNumberWithSpaces(totalBet);
+
+      // Проверка активности текущего пользователя
+      const currentUserData = values.find(d => d.isCurrentUser);
+      if (currentUserData && !currentUserData.isOnline) {
+        if (!inactivityTimeout) {
+          notification.classList.add('visible');
+          inactivityTimeout = setTimeout(async () => {
+            const removed = await removeUser();
+            if (removed) {
+              clearInterval(activityInterval);
+              activityInterval = null;
+              notification.classList.remove('visible');
+              document.body.removeEventListener('click', updateUserActivity);
+              renderBetUI();
+            }
+          }, 4000);
+        }
+      } else {
+        if (inactivityTimeout) {
+          clearTimeout(inactivityTimeout);
+          inactivityTimeout = null;
+        }
+        notification.classList.remove('visible');
+      }
     } catch (error) {
       console.error('Leaderboard update error:', error);
     }
@@ -704,7 +889,7 @@ async function showLeaderboard() {
 
   const timerInterval = setInterval(() => {
     if (!startTime) {
-      timerElement.textContent = 'Ожидание первой ставки...';
+      timerElement.innerHTML = 'Ожидание первой ставки...';
       return;
     }
     const nowMs = Date.now();
@@ -712,38 +897,68 @@ async function showLeaderboard() {
     const elapsedMs = approxServerTimeMs - startTime.getTime();
     const remainingMs = Math.max(0, 60000 - elapsedMs);
     const remainingSec = Math.floor(remainingMs / 1000);
-    if (remainingMs <= 10000) {
+    if (remainingSec <= 10) {
       timerElement.classList.add('warning');
     }
-    if (remainingMs <= 1000) {
-      timerElement.textContent = '0 сек.';
+    if (remainingSec <= 5) {
+      timerElement.classList.add('active');
+    }
+    if (remainingSec <= 1) {
+      timerElement.classList.add('hidden');
       setTimeout(() => {
-        timerElement.classList.add('hidden');
         clearInterval(timerInterval);
         clearInterval(updateInterval);
+        clearInterval(activityInterval);
+        activityInterval = null;
+        document.body.removeEventListener('click', updateUserActivity);
         showLoadingAndRandom();
       }, remainingMs);
     } else {
-      timerElement.textContent = `${remainingSec} сек.`;
+      timerElement.innerHTML = `<span>${remainingSec}</span> сек.`;
     }
   }, 100);
 }
 
 async function showLoadingAndRandom() {
   await setLock();
+  let leaderboardData;
+  try {
+    leaderboardData = await loadLeaderboardDataViaScript();
+  } catch (error) {
+    showMessage('Ошибка загрузки таблицы: ' + error.message, true, error);
+    return;
+  }
+  const { values } = leaderboardData;
+  const html = renderLeaderboardTable(values);
+  const mainElement = document.getElementById('main');
+  if (mainElement) {
+    mainElement.innerHTML = `
+      <div class="leaderboard">
+        <div class="left-column" style="display: flex; flex-direction: column; justify-content: center;">
+          <div id="loading">
+            <div class="loader"></div>
+            <p>Определяем победителя...</p>
+          </div>
+          <div id="winner" class="hidden">
+            <h2>Выпало число (Может быть задержка): <span id="randomNumber"></span></h2>
+            <h3>Победитель: <span id="winnerName"></span></h3>
+            <p id="winnerBetText" class="hidden">Ставка победителя: <span id="winnerBet"></span></p>
+            <p id="winnerTotalText" class="hidden">Выиграно: <span id="winnerTotal"></span></p>
+            <p id="claimButton" class="hidden"><a href="https://t.me/Clickerstart_bot" class="claim-btn">Забрать</a></p>
+          </div>
+        </div>
+        <div class="right-column">
+          <h2 class="desktop-only">Таблица ставок</h2>
+          <div class="leaderboard-scroll">
+            ${html}
+          </div>
+        </div>
+      </div>
+    `;
+  }
   const loading = document.getElementById('loading');
   const winner = document.getElementById('winner');
-  if (loading) loading.classList.remove('hidden');
   try {
-    const countdownElement = document.createElement('div');
-    countdownElement.className = 'countdown';
-    loading.appendChild(countdownElement);
-    for (let i = 5; i > 0; i--) {
-      countdownElement.textContent = i;
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-    countdownElement.remove();
-
     const random = await getRandomNumberFromServer();
     if (loading) loading.classList.add('hidden');
     if (winner) winner.classList.remove('hidden');
@@ -793,6 +1008,7 @@ async function pickWinner(random) {
   const currentUser = localStorage.getItem('username')?.trim() || '';
   const currentUserId = localStorage.getItem('userId');
   const totalBet = data.reduce((sum, d) => sum + (d.bet || 0), 0);
+  const html = renderLeaderboardTable(data);
   if (data.length === 0) {
     document.getElementById('main').innerHTML = `
       <div class="leaderboard">
@@ -823,24 +1039,7 @@ async function pickWinner(random) {
           <div class="right-column">
             <h2 class="desktop-only">Таблица ставок</h2>
             <div class="leaderboard-scroll">
-              <table class="leaderboard-table">
-                <thead>
-                  <tr>
-                    <th>№</th>
-                    <th>Имя</th>
-                    <th>Ставка</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${data.map((d, index) => `
-                    <tr class="${d.isCurrentUser ? 'your-place' : ''}">
-                      <td>${index + 1}</td>
-                      <td>${d.name}${d.isCurrentUser ? ' (Вы)' : ''}</td>
-                      <td>${formatNumberWithSpaces(d.bet || 0)}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
+              ${html}
             </div>
           </div>
         </div>
@@ -863,16 +1062,18 @@ async function pickWinner(random) {
       const randomNumberElement = document.getElementById('randomNumber');
       const winnerNameElement = document.getElementById('winnerName');
       const winnerBetElement = document.getElementById('winnerBet');
-      const winnerBetTextElement = document.getElementById('winnerBetText');
+      const winnerBetTextElement = document.getId('winnerBetText');
       const winnerTotalElement = document.getElementById('winnerTotal');
       const winnerTotalTextElement = document.getElementById('winnerTotalText');
       const claimButtonElement = document.getElementById('claimButton');
-      if (randomNumberElement && winnerNameElement && winnerBetElement && winnerBetTextElement && winnerTotalElement && winnerTotalTextElement && claimButtonElement) {
+      const leaderboardScroll = document.querySelector('.leaderboard-scroll');
+      if (randomNumberElement && winnerNameElement && winnerBetElement && winnerBetTextElement && winnerTotalElement && winnerTotalTextElement && claimButtonElement && leaderboardScroll) {
         randomNumberElement.textContent = formatNumberWithSpaces(random);
         winnerNameElement.textContent = winnerText;
         winnerBetElement.textContent = formatNumberWithSpaces(winner.bet || 0);
         winnerBetTextElement.classList.remove('hidden');
         winnerTotalElement.textContent = formatNumberWithSpaces(winnerPrize);
+        leaderboardScroll.innerHTML = html;
         if (isCurrentUserWinner) {
           winnerTotalTextElement.classList.remove('hidden');
           claimButtonElement.classList.remove('hidden');
@@ -914,13 +1115,38 @@ async function clearBetsSheet() {
 }
 
 async function init() {
-  todayKey = 'dailyBet_' + (await fetchServerDate());
+  todayKey = await fetchServerDate();
   let attempts = parseInt(localStorage.getItem(todayKey) || 0);
   const unlimitedAttempts = localStorage.getItem('unlimitedAttempts') === 'true';
-  if (!unlimitedAttempts && attempts >= 2) {
-    showAttemptsExhausted();
-  } else {
-    renderBetUI();
+
+  try {
+    const isParticipating = await checkUserParticipation();
+    if (isParticipating) {
+      const leaderboardData = await loadLeaderboardDataViaScript();
+      const { startTime, offset } = leaderboardData;
+      if (startTime) {
+        const nowMs = Date.now();
+        const approxServerTimeMs = nowMs + offset;
+        const elapsedMs = approxServerTimeMs - startTime.getTime();
+        const remainingMs = Math.max(0, 60000 - elapsedMs);
+        if (remainingMs > 0) {
+          showLeaderboard();
+          return;
+        }
+      }
+    }
+    if (!unlimitedAttempts && attempts >= 2) {
+      showAttemptsExhausted();
+    } else {
+      renderBetUI();
+    }
+  } catch (error) {
+    console.error('Error checking participation:', error);
+    if (!unlimitedAttempts && attempts >= 2) {
+      showAttemptsExhausted();
+    } else {
+      renderBetUI();
+    }
   }
 
   const container = document.querySelector('.container');
