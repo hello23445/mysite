@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ежедневная ставка</title>
+  <title>Indexed Money</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     body {
@@ -105,42 +105,46 @@
       50% { transform: scale(1.1); }
       100% { transform: scale(1); }
     }
-    .leaderboard-list {
-      list-style: none;
-      padding: 0;
-      text-align: left;
-      background: rgba(0, 0, 0, 0.2);
-      padding: 10px;
-      border-radius: 8px;
-      max-height: 300px; /* Ограничиваем высоту таблицы */
-      overflow-y: auto; /* Включаем вертикальную прокрутку */
+    .leaderboard-scroll {
+      max-height: 300px;
+      overflow-y: auto;
     }
-    /* Стили для полосы прокрутки */
-    .leaderboard-list::-webkit-scrollbar {
+    .leaderboard-scroll::-webkit-scrollbar {
       width: 8px;
     }
-    .leaderboard-list::-webkit-scrollbar-track {
+    .leaderboard-scroll::-webkit-scrollbar-track {
       background: rgba(255, 255, 255, 0.1);
       border-radius: 4px;
     }
-    .leaderboard-list::-webkit-scrollbar-thumb {
+    .leaderboard-scroll::-webkit-scrollbar-thumb {
       background: #4CAF50;
       border-radius: 4px;
     }
-    .leaderboard-list::-webkit-scrollbar-thumb:hover {
+    .leaderboard-scroll::-webkit-scrollbar-thumb:hover {
       background: #45a049;
     }
-    .leaderboard-list li {
-      margin: 8px 0;
-      padding: 5px;
-      transition: background 0.3s;
+    .leaderboard-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
     }
-    .leaderboard-list li.your-place {
+    .leaderboard-table th, .leaderboard-table td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .leaderboard-table th {
+      background: rgba(0, 0, 0, 0.3);
+    }
+    .leaderboard-table tr.your-place {
       background: rgba(76, 175, 80, 0.3);
       font-weight: bold;
     }
-    .leaderboard-list li:hover {
-      background: rgba(255, 255, 255, 0.1);
+    .leaderboard-table tr:nth-child(odd) {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .leaderboard-table tr:nth-child(even) {
+      background: rgba(0, 0, 0, 0.05);
     }
     .countdown {
       font-size: 2em;
@@ -212,6 +216,23 @@
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
     }
+    .claim-btn {
+      background: linear-gradient(45deg, #FFD700, #FF8C00);
+      color: #fff;
+      padding: 15px 40px;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      text-decoration: none;
+      display: inline-block;
+      margin-top: 15px;
+      box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5);
+      transition: all 0.3s ease;
+    }
+    .claim-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(255, 215, 0, 0.7);
+    }
     @media (max-width: 600px) {
       .container {
         padding: 15px;
@@ -225,13 +246,17 @@
         padding: 10px 20px;
         font-size: 14px;
       }
+      .claim-btn {
+        padding: 12px 30px;
+        font-size: 16px;
+      }
       .timer {
         font-size: 1.2em;
       }
-      .leaderboard-list {
-        max-height: 200px; /* Меньшая высота для мобильных */
+      .leaderboard-scroll {
+        max-height: 200px;
       }
-      .leaderboard-list li {
+      .leaderboard-table td, .leaderboard-table th {
         font-size: 14px;
       }
       .error, .message {
@@ -259,6 +284,21 @@
 <div class="container" id="main"></div>
 
 <script>
+// Генерация UUID для уникального идентификатора пользователя
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+// Проверяем или создаем userId в localStorage
+let userId = localStorage.getItem('userId');
+if (!userId) {
+  userId = generateUUID();
+  localStorage.setItem('userId', userId);
+}
+
 let lastErrorLog = '';
 let todayKey = '';
 let currentBet = 1000;
@@ -274,7 +314,7 @@ console.error = function (...args) {
 };
 
 const SHEET_ID = "1DT1Cj5KvJ3ECL2tb7IF-tGcvPxUA4y_69y9TJ8GwRBI";
-const scriptURL = 'https://script.google.com/macros/s/AKfycbwFJwe5nl-fXZe0RT5pavdZxWIVSBfwM3CLYCqKb-qgkIAnV9b-suYLoMMwJQgsor6M/exec';
+const scriptURL = 'https://script.google.com/macros/s/AKfycbyWkXEHDX1EBNAT8A3BbTl32lwtbmlZTWpfhUktG-D36Um5fVrnQhaAgFGU2IhsnDbI/exec';
 
 async function fetchServerDate() {
   const url = `${scriptURL}?action=getServerDate`;
@@ -478,7 +518,7 @@ async function submitBet(name, bet) {
 
   try {
     showLoader();
-    const response = await sendToSheet(name, bet);
+    const response = await sendToSheet(name, bet, userId);
     if (response.error === "GameLocked") {
       showMessage('Игра заблокирована, попробуйте позже!', true, null, false);
       return;
@@ -490,8 +530,8 @@ async function submitBet(name, bet) {
   }
 }
 
-async function sendToSheet(name, bet) {
-  const url = `${scriptURL}?name=${encodeURIComponent(name)}&bet=${bet}`;
+async function sendToSheet(name, bet, userId) {
+  const url = `${scriptURL}?name=${encodeURIComponent(name)}&bet=${bet}&userId=${encodeURIComponent(userId)}`;
   try {
     const response = await fetch(url, { method: 'GET', mode: 'cors' });
     if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
@@ -516,16 +556,19 @@ async function loadLeaderboardDataViaScript() {
     const serverTimeMs = data.currentTime;
     const clientTimeMs = Date.now();
     const offset = serverTimeMs - clientTimeMs;
+    const currentUser = localStorage.getItem('username')?.trim() || '';
+    const currentUserId = localStorage.getItem('userId');
     const uniqueData = [];
-    const seen = new Set();
-    for (let i = values.length - 1; i >= 0; i--) {
-      const [name, bet] = values[i];
-      const key = `${name}-${bet}`;
-      if (name && bet !== undefined && !isNaN(bet) && !seen.has(key) && name.trim() !== '') {
-        seen.add(key);
-        uniqueData.unshift({ name, bet: parseInt(bet) || 0 });
+
+    for (let i = 0; i < values.length; i++) {
+      const [userId, name, bet] = values[i];
+      if (userId && name && bet !== undefined && !isNaN(bet) && name.trim() !== '') {
+        const betValue = parseInt(bet) || 0;
+        const isCurrentUser = (name.trim() === currentUser && userId === currentUserId);
+        uniqueData.push({ userId, name, bet: betValue, isCurrentUser });
       }
     }
+
     return { values: uniqueData, startTime, offset };
   } catch (error) {
     console.error('Leaderboard load error:', error);
@@ -545,14 +588,29 @@ async function showLeaderboard() {
 
   let { values, startTime, offset } = leaderboardData;
   values.sort((a, b) => (b.bet || 0) - (a.bet || 0));
-  const currentUser = localStorage.getItem('username')?.trim() || '';
   const totalBet = values.reduce((sum, d) => sum + (d.bet || 0), 0);
   const html = values.length > 0 
-    ? values.map((d, index) => {
-        const isCurrentUser = d.name.trim() === currentUser;
-        return `<li class="${isCurrentUser ? 'your-place' : ''}"><strong>${index + 1}. ${d.name}</strong> — ${formatNumberWithSpaces(d.bet || 0)}${isCurrentUser ? ' (Вы)' : ''}</li>`;
-      }).join('')
-    : '<li>Нет участников</li>';
+    ? `
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th>Место</th>
+            <th>Имя</th>
+            <th>Ставка</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${values.map((d, index) => `
+            <tr class="${d.isCurrentUser ? 'your-place' : ''}">
+              <td>${index + 1}</td>
+              <td>${d.name}${d.isCurrentUser ? ' (Вы)' : ''}</td>
+              <td>${formatNumberWithSpaces(d.bet || 0)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `
+    : '<p>Нет участников</p>';
   const mainElement = document.getElementById('main');
   if (mainElement) {
     mainElement.innerHTML = `
@@ -562,17 +620,21 @@ async function showLeaderboard() {
           <div class="total-bet" id="totalBet">${formatNumberWithSpaces(totalBet)}</div>
           <div id="loading" class="hidden">
             <div class="loader"></div>
-            <p>Определяем победителя...</p>
+            <p>Определяем пользователя...</p>
           </div>
           <div id="winner" class="hidden">
-            <h2>Выпало число(Это может занять время): <span id="randomNumber"></span></h2>
+            <h2>Выпало число: <span id="randomNumber"></span></h2>
             <h3>Победитель: <span id="winnerName"></span></h3>
             <p id="winnerBetText" class="hidden">Ставка победителя: <span id="winnerBet"></span></p>
+            <p id="winnerTotalText" class="hidden">Выиграно: <span id="winnerTotal"></span></p>
+            <p id="claimButton" class="hidden"><a href="https://t.me/Clickerstart_bot" class="claim-btn">Забрать</a></p>
           </div>
         </div>
         <div class="right-column">
           <h2>Таблица ставок</h2>
-          <ol class="leaderboard-list">${html}</ol>
+          <div class="leaderboard-scroll">
+            ${html}
+          </div>
         </div>
       </div>
     `;
@@ -588,14 +650,30 @@ async function showLeaderboard() {
       values.sort((a, b) => (b.bet || 0) - (a.bet || 0));
       const totalBet = values.reduce((sum, d) => sum + (d.bet || 0), 0);
       const html = values.length > 0 
-        ? values.map((d, index) => {
-            const isCurrentUser = d.name.trim() === currentUser;
-            return `<li class="${isCurrentUser ? 'your-place' : ''}"><strong>${index + 1}. ${d.name}</strong> — ${formatNumberWithSpaces(d.bet || 0)}${isCurrentUser ? ' (Вы)' : ''}</li>`;
-          }).join('')
-        : '<li>Нет участников</li>';
-      const leaderboardList = document.querySelector('.leaderboard-list');
+        ? `
+          <table class="leaderboard-table">
+            <thead>
+              <tr>
+                <th>Место</th>
+                <th>Имя</th>
+                <th>Ставка</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${values.map((d, index) => `
+                <tr class="${d.isCurrentUser ? 'your-place' : ''}">
+                  <td>${index + 1}</td>
+                  <td>${d.name}${d.isCurrentUser ? ' (Вы)' : ''}</td>
+                  <td>${formatNumberWithSpaces(d.bet || 0)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `
+        : '<p>Нет участников</p>';
+      const leaderboardScroll = document.querySelector('.leaderboard-scroll');
       const totalBetElement = document.getElementById('totalBet');
-      if (leaderboardList) leaderboardList.innerHTML = html;
+      if (leaderboardScroll) leaderboardScroll.innerHTML = html;
       if (totalBetElement) totalBetElement.textContent = formatNumberWithSpaces(totalBet);
     } catch (error) {
       console.error('Leaderboard update error:', error);
@@ -623,6 +701,7 @@ async function showLeaderboard() {
 }
 
 async function showLoadingAndRandom() {
+  await setLock();
   const loading = document.getElementById('loading');
   const winner = document.getElementById('winner');
   if (loading) loading.classList.remove('hidden');
@@ -683,6 +762,8 @@ async function pickWinner(random) {
     return;
   }
   const currentUser = localStorage.getItem('username')?.trim() || '';
+  const currentUserId = localStorage.getItem('userId');
+  const totalBet = data.reduce((sum, d) => sum + (d.bet || 0), 0);
   if (data.length === 0) {
     document.getElementById('main').innerHTML = `
       <div class="leaderboard">
@@ -693,7 +774,9 @@ async function pickWinner(random) {
         </div>
         <div class="right-column">
           <h2>Таблица ставок</h2>
-          <ol class="leaderboard-list"><li>Нет участников</li></ol>
+          <div class="leaderboard-scroll">
+            <p>Нет участников</p>
+          </div>
         </div>
       </div>
     `;
@@ -710,7 +793,26 @@ async function pickWinner(random) {
           </div>
           <div class="right-column">
             <h2>Таблица ставок</h2>
-            <ol class="leaderboard-list">${data.map((d, index) => `<li class="${d.name.trim() === currentUser ? 'your-place' : ''}"><strong>${index + 1}. ${d.name}</strong> — ${formatNumberWithSpaces(d.bet || 0)}${d.name.trim() === currentUser ? ' (Вы)' : ''}</li>`).join('')}</ol>
+            <div class="leaderboard-scroll">
+              <table class="leaderboard-table">
+                <thead>
+                  <tr>
+                    <th>Место</th>
+                    <th>Имя</th>
+                    <th>Ставка</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data.map((d, index) => `
+                    <tr class="${d.isCurrentUser ? 'your-place' : ''}">
+                      <td>${index + 1}</td>
+                      <td>${d.name}${d.isCurrentUser ? ' (Вы)' : ''}</td>
+                      <td>${formatNumberWithSpaces(d.bet || 0)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       `;
@@ -725,27 +827,37 @@ async function pickWinner(random) {
         }
       }
 
-      const winnerText = winner.name + (winner.name.trim() === currentUser ? ' (Вы)' : '');
+      const winnerText = winner.name + (winner.isCurrentUser ? ' (Вы)' : '');
+      const isCurrentUserWinner = winner.isCurrentUser;
+      const winnerPrize = (winner.bet || 0) + random; // Сумма ставки победителя + случайное число
 
       const randomNumberElement = document.getElementById('randomNumber');
       const winnerNameElement = document.getElementById('winnerName');
       const winnerBetElement = document.getElementById('winnerBet');
       const winnerBetTextElement = document.getElementById('winnerBetText');
-      if (randomNumberElement && winnerNameElement && winnerBetElement && winnerBetTextElement) {
+      const winnerTotalElement = document.getElementById('winnerTotal');
+      const winnerTotalTextElement = document.getElementById('winnerTotalText');
+      const claimButtonElement = document.getElementById('claimButton');
+      if (randomNumberElement && winnerNameElement && winnerBetElement && winnerBetTextElement && winnerTotalElement && winnerTotalTextElement && claimButtonElement) {
         randomNumberElement.textContent = formatNumberWithSpaces(random);
         winnerNameElement.textContent = winnerText;
         winnerBetElement.textContent = formatNumberWithSpaces(winner.bet || 0);
         winnerBetTextElement.classList.remove('hidden');
+        winnerTotalElement.textContent = formatNumberWithSpaces(winnerPrize);
+        if (isCurrentUserWinner) { // Показываем "Выиграно" и кнопку только для победителя
+          winnerTotalTextElement.classList.remove('hidden');
+          claimButtonElement.classList.remove('hidden');
+        }
       }
-      await sendWinnerToSheet(winner.name, winner.bet, random);
+      await sendWinnerToSheet(winner.name, winner.bet, random, winnerPrize);
     }
   }
   await setLock();
   setTimeout(async () => await clearBetsSheet(), 10000);
 }
 
-async function sendWinnerToSheet(name, bet, random) {
-  const url = `${scriptURL}?name=${encodeURIComponent(name)}&bet=${encodeURIComponent(bet)}&random=${encodeURIComponent(random)}&action=winner`;
+async function sendWinnerToSheet(name, bet, random, winnerPrize) {
+  const url = `${scriptURL}?name=${encodeURIComponent(name)}&bet=${encodeURIComponent(bet)}&random=${encodeURIComponent(random)}&action=winner&totalBet=${encodeURIComponent(winnerPrize)}`;
   try {
     const response = await fetch(url, { method: 'GET', mode: 'cors' });
     if (!response.ok) throw new Error(`Failed to fetch winner: ${response.status}`);
@@ -786,7 +898,7 @@ async function init() {
   if (container) {
     container.addEventListener('click', (event) => {
       const target = event.target;
-      if (!target.closest('input') && !target.closest('button')) {
+      if (!target.closest('input') && !target.closest('button') && !target.closest('a')) {
         if (document.activeElement && document.activeElement.blur) {
           document.activeElement.blur();
         }
