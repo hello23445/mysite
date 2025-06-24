@@ -384,6 +384,7 @@ if (!userId) {
 let lastErrorLog = '';
 let todayKey = '';
 let currentBet = 1000;
+let isLoadingWinner = false;
 
 function formatNumberWithSpaces(number) {
   return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -736,7 +737,7 @@ async function showLeaderboard() {
             <p>Определяем победителя...</p>
           </div>
           <div id="winner" class="hidden">
-            <h2>Выпало число (Может быть задержка): <span id="randomNumber"></span></h2>
+            <h2>Выпало число: <span id="randomNumber"></span></h2>
             <h3>Победитель: <span id="winnerName"></span></h3>
             <p id="winnerBetText" class="hidden">Ставка победителя: <span id="winnerBet"></span></p>
             <p id="winnerTotalText" class="hidden">Выиграно: <span id="winnerTotal"></span></p>
@@ -789,14 +790,12 @@ async function showLeaderboard() {
     if (remainingSec <= 5) {
       timerElement.classList.add('active');
     }
-    if (remainingSec <= 1) {
+    if (remainingSec <= 0) {
       timerContainer.classList.add('hidden');
       loadingElement.classList.remove('hidden');
-      setTimeout(() => {
-        clearInterval(timerInterval);
-        clearInterval(updateInterval);
-        showLoadingAndRandom();
-      }, remainingMs);
+      clearInterval(timerInterval);
+      clearInterval(updateInterval);
+      showLoadingAndRandom();
     } else {
       timerElement.innerHTML = `<span>${remainingSec}</span>`;
     }
@@ -804,11 +803,15 @@ async function showLeaderboard() {
 }
 
 async function showLoadingAndRandom() {
+  if (isLoadingWinner) return;
+  isLoadingWinner = true;
+
   await setLock();
   let leaderboardData;
   try {
     leaderboardData = await loadLeaderboardDataViaScript();
   } catch (error) {
+    isLoadingWinner = false;
     showMessage('Ошибка загрузки таблицы: ' + error.message, true, error);
     return;
   }
@@ -824,7 +827,7 @@ async function showLoadingAndRandom() {
             <p>Определяем победителя...</p>
           </div>
           <div id="winner" class="hidden">
-            <h2>Выпало число (Может быть задержка): <span id="randomNumber"></span></h2>
+            <h2>Выпало число: <span id="randomNumber"></span></h2>
             <h3>Победитель: <span id="winnerName"></span></h3>
             <p id="winnerBetText" class="hidden">Ставка победителя: <span id="winnerBet"></span></p>
             <p id="winnerTotalText" class="hidden">Выиграно: <span id="winnerTotal"></span></p>
@@ -846,9 +849,10 @@ async function showLoadingAndRandom() {
     const random = await getRandomNumberFromServer();
     if (loading) loading.classList.add('hidden');
     if (winner) winner.classList.remove('hidden');
-    await pickWinner(random);
+    await pickWinner(random, values);
   } catch (error) {
     if (loading) loading.classList.add('hidden');
+    isLoadingWinner = false;
     showMessage('Ошибка определения победителя: ' + error.message, true, error);
   }
 }
@@ -881,93 +885,73 @@ async function setLock() {
   }
 }
 
-async function pickWinner(random) {
-  let data;
+async function pickWinner(random, data) {
   try {
-    data = (await loadLeaderboardDataViaScript()).values;
-  } catch (error) {
-    showMessage('Ошибка загрузки данных: ' + error.message, true, error);
-    return;
-  }
-  const currentUser = localStorage.getItem('username')?.trim() || '';
-  const currentUserId = localStorage.getItem('userId');
-  const totalBet = data.reduce((sum, d) => sum + (d.bet || 0), 0);
-  const html = renderLeaderboardTable(data);
-  if (data.length === 0) {
-    document.getElementById('main').innerHTML = `
-      <div class="leaderboard">
-        <div class="left-column">
-          <div id="winner">
-            <h2>Нет победителя</h2>
-          </div>
-        </div>
-        <div class="right-column">
-          <h2 class="desktop-only">Таблица ставок</h2>
-          <div class="leaderboard-scroll">
-            <p>Нет участников</p>
-          </div>
-        </div>
-      </div>
-    `;
-  } else {
-    const eligibleData = data.filter(user => Math.abs(random - (user.bet || 0)) <= 15000);
-    if (eligibleData.length === 0) {
+    isLoadingWinner = true;
+    if (data.length === 0) {
       document.getElementById('main').innerHTML = `
         <div class="leaderboard">
           <div class="left-column">
             <div id="winner">
-              <h2>Выпало число (Может быть задержка): ${formatNumberWithSpaces(random)}</h2>
-              <h3>Нет победителя</h3>
+              <h2>Нет победителя</h2>
             </div>
           </div>
           <div class="right-column">
             <h2 class="desktop-only">Таблица ставок</h2>
             <div class="leaderboard-scroll">
-              ${html}
+              <p>Нет участников</p>
             </div>
           </div>
         </div>
       `;
-    } else {
-      let winner = eligibleData[0];
-      let minDiff = Math.abs(random - (eligibleData[0].bet || 0));
-      for (const user of eligibleData) {
-        const diff = Math.abs(random - (user.bet || 0));
-        if (diff < minDiff) {
-          winner = user;
-          minDiff = diff;
-        }
-      }
-
-      const winnerText = winner.name + (winner.isCurrentUser ? ' (Вы)' : '');
-      const isCurrentUserWinner = winner.isCurrentUser;
-      const winnerPrize = (winner.bet || 0) + random;
-
-      const randomNumberElement = document.getElementById('randomNumber');
-      const winnerNameElement = document.getElementById('winnerName');
-      const winnerBetElement = document.getElementById('winnerBet');
-      const winnerBetTextElement = document.getElementById('winnerBetText');
-      const winnerTotalElement = document.getElementById('winnerTotal');
-      const winnerTotalTextElement = document.getElementById('winnerTotalText');
-      const claimButtonElement = document.getElementById('claimButton');
-      const leaderboardScroll = document.querySelector('.leaderboard-scroll');
-      if (randomNumberElement && winnerNameElement && winnerBetElement && winnerBetTextElement && winnerTotalElement && winnerTotalTextElement && claimButtonElement && leaderboardScroll) {
-        randomNumberElement.textContent = formatNumberWithSpaces(random);
-        winnerNameElement.textContent = winnerText;
-        winnerBetElement.textContent = formatNumberWithSpaces(winner.bet || 0);
-        winnerBetTextElement.classList.remove('hidden');
-        winnerTotalElement.textContent = formatNumberWithSpaces(winnerPrize);
-        leaderboardScroll.innerHTML = html;
-        if (isCurrentUserWinner) {
-          winnerTotalTextElement.classList.remove('hidden');
-          claimButtonElement.classList.remove('hidden');
-        }
-      }
-      await sendWinnerToSheet(winner.name, winner.bet, random, winnerPrize);
+      isLoadingWinner = false;
+      return;
     }
+
+    let winner = data[0];
+    let minDiff = Math.abs(random - winner.bet);
+    for (const user of data) {
+      const diff = Math.abs(random - user.bet);
+      if (diff < minDiff) {
+        winner = user;
+        minDiff = diff;
+      }
+    }
+
+    const winnerText = winner.name + (winner.isCurrentUser ? ' (Вы)' : '');
+    const winnerPrize = (winner.bet || 0) + random;
+
+    const randomNumberElement = document.getElementById('randomNumber');
+    const winnerNameElement = document.getElementById('winnerName');
+    const winnerBetElement = document.getElementById('winnerBet');
+    const winnerTotalElement = document.getElementById('winnerTotal');
+    const winnerBetTextEl = document.getElementById('winnerBetText');
+    const winnerTotalTextEl = document.getElementById('winnerTotalText');
+    const claimBtnEl = document.getElementById('claimButton');
+    const leaderboardScroll = document.querySelector('.leaderboard-scroll');
+
+    if (randomNumberElement) randomNumberElement.textContent = formatNumberWithSpaces(random);
+    if (winnerNameElement) winnerNameElement.textContent = winnerText;
+    if (winnerBetElement) winnerBetElement.textContent = formatNumberWithSpaces(winner.bet);
+    if (winnerTotalElement) winnerTotalElement.textContent = formatNumberWithSpaces(winnerPrize);
+    winnerBetTextEl?.classList.remove('hidden');
+    winnerTotalTextEl?.classList.remove('hidden');
+    if (winner.isCurrentUser) {
+      claimBtnEl?.classList.remove('hidden');
+    }
+    if (leaderboardScroll) {
+      leaderboardScroll.innerHTML = renderLeaderboardTable(data);
+    }
+
+    await sendWinnerToSheet(winner.name, winner.bet, random, winnerPrize);
+    await setLock();
+    setTimeout(() => clearBetsSheet(), 10000);
+    isLoadingWinner = false;
+  } catch (error) {
+    console.error('Ошибка в pickWinner:', error);
+    isLoadingWinner = false;
+    showMessage('Ошибка определения победителя: ' + error.message, true);
   }
-  await setLock();
-  setTimeout(async () => await clearBetsSheet(), 10000);
 }
 
 async function sendWinnerToSheet(name, bet, random, winnerPrize) {
